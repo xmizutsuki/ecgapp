@@ -1,0 +1,22 @@
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Node / tooling (if added later)
+node_modules/
+dist/
+
+# Supabase local development
+.supabase/
+supabase/.temp/
+
+# Do not commit private keys
+*.pem
+*.key

@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#07111f" />
+  <title>ECG Lab</title>
+  <script>try{if(localStorage.getItem('ecgLabLanguage'))document.documentElement.classList.add('language-selected')}catch(e){}</script>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="languageGate" class="language-gate" aria-label="Language selection">
+    <div class="language-card">
+      <div class="language-brand"><div class="brand-mark">♥</div><div><strong>ECG Lab</strong><small>Electrocardiography training</small></div></div>
+      <div class="language-icon">🌐</div>
+      <h1>Escolha seu idioma<br><span>Choose your language</span></h1>
+      <p>Você poderá alterar depois dentro do aplicativo.<br><span>You can change it later inside the app.</span></p>
+      <div class="language-options">
+        <button data-lang="pt-BR"><span class="flag">🇧🇷</span><div><strong>Português</strong><small>Brasil</small></div><b>→</b></button>
+        <button data-lang="en"><span class="flag">🇺🇸</span><div><strong>English</strong><small>International</small></div><b>→</b></button>
+      </div>
+      <small class="language-note">ECG Lab • Educational platform</small>
+    </div>
+  </div>
+
+  <div id="app"></div>
+
+  <div class="modal-backdrop hidden" id="authModal">
+    <div class="modal auth-modal">
+      <button class="modal-close" data-close-modal>×</button>
+      <div class="brand compact"><div class="brand-mark">♥</div><div><strong>ECG Lab</strong><small>Aprenda interpretando</small></div></div>
+      <div class="auth-tabs"><button class="active" data-auth-tab="login">Entrar</button><button data-auth-tab="signup">Criar conta</button></div>
+      <form id="authForm">
+        <div id="nameField" class="field hidden"><label>Nome</label><input id="authName" autocomplete="name" placeholder="Seu nome" /></div>
+        <div class="field"><label>E-mail</label><input id="authEmail" type="email" autocomplete="email" placeholder="voce@exemplo.com" required /></div>
+        <div class="field"><label>Senha</label><input id="authPassword" type="password" minlength="6" autocomplete="current-password" placeholder="••••••••" required /></div>
+        <button class="btn btn-primary full" type="submit" id="authSubmit">Entrar</button>
+      </form>
+      <button class="btn btn-ghost full" id="demoLogin">Entrar em modo demonstração</button>
+      <p class="auth-note" id="authNote">O login real funciona após configurar o Supabase em <code>config.js</code>.</p>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+  <script src="config.js"></script>
+  <script src="i18n.js"></script>
+  <script src="real_cases.js"></script>
+  <script src="study_content.js"></script>
+  <script src="localize_data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

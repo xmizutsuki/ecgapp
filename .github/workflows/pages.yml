@@ -1,8 +1,10 @@
-name: Deploy ECG Lab to GitHub Pages
+name: Validate and deploy ECG Lab
 
 on:
   push:
-    branches: [main]
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
   workflow_dispatch:
 
 permissions:
@@ -11,55 +13,103 @@ permissions:
   id-token: write
 
 concurrency:
-  group: pages
+  group: "ecg-pages-${{ github.ref }}"
   cancel-in-progress: true
 
 jobs:
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+  build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Generate ECG vector assets
-        run: python3 scripts/generate_ecg_svgs.py
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
 
-      - name: Apply safe bilingual translation patch
-        run: python3 scripts/patch_i18n.py
+      - name: Install build dependencies
+        run: python -m pip install --disable-pip-version-check --no-cache-dir reportlab cairosvg pypdf
 
-      - name: Pass selected language to CardioTutor
-        run: python3 scripts/patch_app_language.py
+      - name: Harden bilingual runtime
+        run: |
+          python scripts/patch_i18n.py
+          python scripts/patch_app_language.py
+
+      - name: Generate ECG vector library
+        run: python scripts/generate_ecg_svgs.py
+
+      - name: Generate bilingual lesson PDFs
+        run: python scripts/generate_lesson_pdfs.py
 
       - name: Validate static bundle
         shell: bash
         run: |
           set -euo pipefail
-          test -f index.html
-          test -f app.js
-          test -f real_cases.js
-          test -f study_content.js
-          test -f i18n.js
-          test -f styles.css
+          for f in index.html app.js styles.css release_features.css i18n.js localize_data.js real_cases.js study_content.js study_casecoach_features.js simulation_features.js supabase/functions/ecg-tutor/index.ts; do
+            test -f "$f" || { echo "Missing required file: $f"; exit 1; }
+          done
+
           test "$(find assets/ecg -type f -name '*.svg' | wc -l)" -eq 114
-          grep -q "assets/ecg/sinus_tachy/sinus_tachy_01.svg" real_cases.js
-          grep -q "language:window.ECG_LANG" app.js
+          test "$(find assets/lessons/pt -type f -name '*.pdf' | wc -l)" -eq 21
+          test "$(find assets/lessons/en -type f -name '*.pdf' | wc -l)" -eq 21
+
           node --check app.js
+          node --check i18n.js
+          node --check localize_data.js
           node --check real_cases.js
           node --check study_content.js
-          node --check i18n.js
-          echo "Static bundle validated: 114 ECG SVGs generated; bilingual tutor payload present; JavaScript syntax OK."
+          node --check study_casecoach_features.js
+          node --check simulation_features.js
+          python -m py_compile scripts/generate_ecg_svgs.py scripts/generate_lesson_pdfs.py scripts/patch_i18n.py scripts/patch_app_language.py
+
+          python - <<'PY'
+          from pathlib import Path
+          from html.parser import HTMLParser
+          from pypdf import PdfReader
+
+          class Scripts(HTMLParser):
+              def __init__(self):
+                  super().__init__(); self.srcs=[]
+              def handle_starttag(self, tag, attrs):
+                  if tag == 'script':
+                      d=dict(attrs)
+                      if d.get('src'): self.srcs.append(d['src'])
+
+          p=Scripts(); p.feed(Path('index.html').read_text(encoding='utf-8'))
+          missing=[s for s in p.srcs if not s.startswith(('http://','https://')) and not Path(s).is_file()]
+          if missing: raise SystemExit(f'Missing script references: {missing}')
+
+          for lang in ('pt','en'):
+              files=sorted((Path('assets/lessons')/lang).glob('*.pdf'))
+              bad=[str(f) for f in files if len(PdfReader(str(f)).pages) != 6]
+              if bad: raise SystemExit(f'Lesson PDFs must have 6 pages: {bad}')
+          print('Static references and 42 six-page PDFs validated.')
+          PY
+
+          ! grep -RniE 'registro clínico real|ECG real de paciente|real patient ECG' index.html app.js study_casecoach_features.js README.md DATA_SOURCES.md || {
+            echo 'Found wording that may incorrectly imply the synthetic training tracings are real patient ECGs.'
+            exit 1
+          }
 
       - name: Configure Pages
+        if: github.event_name != 'pull_request'
         uses: actions/configure-pages@v5
 
-      - name: Upload site
+      - name: Upload static site
+        if: github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@v3
         with:
-          path: .
+          path: '.'
 
-      - name: Deploy
+  deploy:
+    if: github.event_name != 'pull_request'
+    needs: build
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4

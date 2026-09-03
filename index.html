@@ -4,9 +4,11 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="theme-color" content="#07111f" />
+  <meta name="description" content="ECG Lab — plataforma educacional bilíngue para treinamento de interpretação eletrocardiográfica." />
   <title>ECG Lab</title>
   <script>try{if(localStorage.getItem('ecgLabLanguage'))document.documentElement.classList.add('language-selected')}catch(e){}</script>
   <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="release_features.css" />
 </head>
 <body>
   <div id="languageGate" class="language-gate" aria-label="Language selection">
@@ -27,7 +29,7 @@
 
   <div class="modal-backdrop hidden" id="authModal">
     <div class="modal auth-modal">
-      <button class="modal-close" data-close-modal>×</button>
+      <button class="modal-close" data-close-modal aria-label="Fechar">×</button>
       <div class="brand compact"><div class="brand-mark">♥</div><div><strong>ECG Lab</strong><small>Aprenda interpretando</small></div></div>
       <div class="auth-tabs"><button class="active" data-auth-tab="login">Entrar</button><button data-auth-tab="signup">Criar conta</button></div>
       <form id="authForm">
@@ -41,12 +43,18 @@
     </div>
   </div>
 
-  <div class="toast" id="toast"></div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <!-- Base data and localization. English uses deterministic deep translation from i18n.js. -->
   <script src="config.js"></script>
   <script src="i18n.js"></script>
   <script src="real_cases.js"></script>
   <script src="study_content.js"></script>
   <script src="localize_data.js"></script>
+
+  <!-- Core app, followed by release feature overrides. -->
   <script src="app.js"></script>
+  <script src="study_casecoach_features.js"></script>
+  <script src="simulation_features.js"></script>
 </body>
 </html>

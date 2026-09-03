@@ -1,7 +1,9 @@
-name: Deploy ECG Lab to GitHub Pages
+name: Validate and deploy ECG Lab
 
 on:
   push:
+    branches: ["main"]
+  pull_request:
     branches: ["main"]
   workflow_dispatch:
 
@@ -11,14 +13,11 @@ permissions:
   id-token: write
 
 concurrency:
-  group: "pages"
+  group: "ecg-pages-${{ github.ref }}"
   cancel-in-progress: true
 
 jobs:
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+  build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -29,8 +28,8 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install PDF dependencies
-        run: python -m pip install --disable-pip-version-check --no-cache-dir reportlab cairosvg
+      - name: Install build dependencies
+        run: python -m pip install --disable-pip-version-check --no-cache-dir reportlab cairosvg pypdf
 
       - name: Generate ECG vector library
         run: python scripts/generate_ecg_svgs.py
@@ -42,40 +41,70 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test -f index.html
-          test -f app.js
-          test -f styles.css
-          test -f i18n.js
-          test -f real_cases.js
-          test -f real_cases_en.js
-          test -f study_content.js
-          test -f study_content_en.js
-          test -f supabase/functions/ecg-tutor/index.ts
+          for f in index.html app.js styles.css release_features.css i18n.js localize_data.js real_cases.js study_content.js study_casecoach_features.js simulation_features.js supabase/functions/ecg-tutor/index.ts; do
+            test -f "$f" || { echo "Missing required file: $f"; exit 1; }
+          done
+
           test "$(find assets/ecg -type f -name '*.svg' | wc -l)" -eq 114
           test "$(find assets/lessons/pt -type f -name '*.pdf' | wc -l)" -eq 21
           test "$(find assets/lessons/en -type f -name '*.pdf' | wc -l)" -eq 21
-          grep -q 'real_cases_en.js' index.html
-          grep -q 'study_content_en.js' index.html
-          grep -q 'case-feedback' app.js
-          grep -q 'assets/lessons/' app.js
-          grep -q '20 e 80' app.js
+
           node --check app.js
           node --check i18n.js
           node --check localize_data.js
           node --check real_cases.js
-          node --check real_cases_en.js
           node --check study_content.js
-          node --check study_content_en.js
+          node --check study_casecoach_features.js
+          node --check simulation_features.js
           python -m py_compile scripts/generate_ecg_svgs.py scripts/generate_lesson_pdfs.py
 
+          python - <<'PY'
+          from pathlib import Path
+          from html.parser import HTMLParser
+          from pypdf import PdfReader
+
+          class Scripts(HTMLParser):
+              def __init__(self):
+                  super().__init__(); self.srcs=[]
+              def handle_starttag(self, tag, attrs):
+                  if tag == 'script':
+                      d=dict(attrs)
+                      if d.get('src'): self.srcs.append(d['src'])
+
+          p=Scripts(); p.feed(Path('index.html').read_text(encoding='utf-8'))
+          missing=[s for s in p.srcs if not s.startswith(('http://','https://')) and not Path(s).is_file()]
+          if missing: raise SystemExit(f'Missing script references: {missing}')
+
+          for lang in ('pt','en'):
+              files=sorted((Path('assets/lessons')/lang).glob('*.pdf'))
+              bad=[str(f) for f in files if len(PdfReader(str(f)).pages) != 6]
+              if bad: raise SystemExit(f'Lesson PDFs must have 6 pages: {bad}')
+          print('Static references and 42 six-page PDFs validated.')
+          PY
+
+          ! grep -RniE 'registro clínico real|ECG real de paciente|real patient ECG' index.html app.js study_casecoach_features.js README.md DATA_SOURCES.md || {
+            echo 'Found wording that may incorrectly imply the synthetic training tracings are real patient ECGs.'
+            exit 1
+          }
+
       - name: Configure Pages
+        if: github.event_name != 'pull_request'
         uses: actions/configure-pages@v5
 
       - name: Upload static site
+        if: github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@v3
         with:
           path: '.'
 
+  deploy:
+    if: github.event_name != 'pull_request'
+    needs: build
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4

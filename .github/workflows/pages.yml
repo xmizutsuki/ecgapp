@@ -2,7 +2,7 @@ name: Deploy ECG Lab to GitHub Pages
 
 on:
   push:
-    branches: [main]
+    branches: ["main"]
   workflow_dispatch:
 
 permissions:
@@ -11,7 +11,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: pages
+  group: "pages"
   cancel-in-progress: true
 
 jobs:
@@ -24,14 +24,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Generate ECG vector assets
-        run: python3 scripts/generate_ecg_svgs.py
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
 
-      - name: Apply safe bilingual translation patch
-        run: python3 scripts/patch_i18n.py
+      - name: Install PDF dependencies
+        run: python -m pip install --disable-pip-version-check --no-cache-dir reportlab cairosvg
 
-      - name: Pass selected language to CardioTutor
-        run: python3 scripts/patch_app_language.py
+      - name: Generate ECG vector library
+        run: python scripts/generate_ecg_svgs.py
+
+      - name: Generate bilingual lesson PDFs
+        run: python scripts/generate_lesson_pdfs.py
 
       - name: Validate static bundle
         shell: bash
@@ -39,27 +44,38 @@ jobs:
           set -euo pipefail
           test -f index.html
           test -f app.js
-          test -f real_cases.js
-          test -f study_content.js
-          test -f i18n.js
           test -f styles.css
+          test -f i18n.js
+          test -f real_cases.js
+          test -f real_cases_en.js
+          test -f study_content.js
+          test -f study_content_en.js
+          test -f supabase/functions/ecg-tutor/index.ts
           test "$(find assets/ecg -type f -name '*.svg' | wc -l)" -eq 114
-          grep -q "assets/ecg/sinus_tachy/sinus_tachy_01.svg" real_cases.js
-          grep -q "language:window.ECG_LANG" app.js
+          test "$(find assets/lessons/pt -type f -name '*.pdf' | wc -l)" -eq 21
+          test "$(find assets/lessons/en -type f -name '*.pdf' | wc -l)" -eq 21
+          grep -q 'real_cases_en.js' index.html
+          grep -q 'study_content_en.js' index.html
+          grep -q 'case-feedback' app.js
+          grep -q 'assets/lessons/' app.js
+          grep -q '20 e 80' app.js
           node --check app.js
-          node --check real_cases.js
-          node --check study_content.js
           node --check i18n.js
-          echo "Static bundle validated: 114 ECG SVGs generated; bilingual tutor payload present; JavaScript syntax OK."
+          node --check localize_data.js
+          node --check real_cases.js
+          node --check real_cases_en.js
+          node --check study_content.js
+          node --check study_content_en.js
+          python -m py_compile scripts/generate_ecg_svgs.py scripts/generate_lesson_pdfs.py
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
 
-      - name: Upload site
+      - name: Upload static site
         uses: actions/upload-pages-artifact@v3
         with:
-          path: .
+          path: '.'
 
-      - name: Deploy
+      - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4

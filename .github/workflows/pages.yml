@@ -27,6 +27,9 @@ jobs:
       - name: Generate ECG vector assets
         run: python3 scripts/generate_ecg_svgs.py
 
+      - name: Apply safe bilingual translation patch
+        run: python3 scripts/patch_i18n.py
+
       - name: Validate static bundle
         shell: bash
         run: |
@@ -39,7 +42,11 @@ jobs:
           test -f styles.css
           test "$(find assets/ecg -type f -name '*.svg' | wc -l)" -eq 114
           grep -q "assets/ecg/sinus_tachy/sinus_tachy_01.svg" real_cases.js
-          echo "Static bundle validated: 114 ECG SVGs generated."
+          node --check app.js
+          node --check real_cases.js
+          node --check study_content.js
+          node --check i18n.js
+          echo "Static bundle validated: 114 ECG SVGs generated; JavaScript syntax OK."
 
       - name: Configure Pages
         uses: actions/configure-pages@v5

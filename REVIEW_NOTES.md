@@ -1,28 +1,29 @@
-# ECG Lab — technical review notes
+# ECG Lab - revisão técnica da versão 2026-09-03
 
-This repository is a static educational ECG application. The GitHub Pages build now:
+Esta revisão acompanha a atualização da versão completa da plataforma no GitHub Pages.
 
-1. generates the complete vector ECG library (114 SVGs: 19 rhythms × 6 variants);
-2. applies a boundary-safe bilingual translation patch;
-3. validates the presence of all essential app files;
-4. checks JavaScript syntax before deployment.
+## Itens validados no build
 
-## ECG morphology review
+- 114 traçados ECG vetoriais SVG, gerados no deploy.
+- Espessura principal do traçado em 1.12 e calibração em 0.84, mantendo a revisão 20% mais fina.
+- Treino adaptativo aleatório com progressão de dificuldade.
+- Trilha de estudos integralmente liberada.
+- 190 estudos de caso na biblioteca pedagógica.
+- Seletor Português / English antes da entrada no aplicativo.
+- Arquivos de conteúdo em inglês separados para evitar tradução automática destrutiva dos casos.
+- Ferramenta de resposta por texto/voz nos estudos de caso e payload estruturado `case-feedback` para o tutor de IA.
+- Simulado personalizado com 20 a 80 questões.
+- 42 PDFs aprofundados: 21 PT + 21 EN, gerados durante o deploy.
+- Verificação de sintaxe JavaScript e Python antes do GitHub Pages publicar a versão.
 
-The SVG generator was revised so morphology parameters are stable within each beat rather than randomly changing at every waveform sample. Sinus tachycardia keeps a visible P wave before every QRS; monomorphic VT keeps consistent polarity/morphology; AV-block patterns model dropped conduction explicitly; PVC/bigeminy/trigeminy timing includes premature ventricular beats and compensatory timing; VF remains disorganized without organized QRS complexes.
+## Referências dos PDFs
 
-## Training logic
+Guyton and Hall Textbook of Medical Physiology, 15th edition, é usado como principal referência de fisiologia. Diretrizes ACC/AHA/HRS e correlatas complementam os critérios clínicos e eletrocardiográficos quando necessário. O material é síntese educacional original; não reproduz figuras ou trechos extensos do tratado.
 
-The adaptive trainer is CAT-inspired: it begins with easy questions, weights weaker categories more heavily, avoids immediate category repetition, adjusts estimated ability after each answer, and samples questions probabilistically. It is an educational adaptive algorithm, not the proprietary NCLEX psychometric CAT engine.
+## Limitação externa ainda existente
 
-## Content inventory
+A interface está pronta para funcionar sem backend em modo demonstração. Login real e correção real por IA exigem configurar `config.js` com um projeto Supabase, publicar a Edge Function `ecg-tutor` e definir o secret `OPENAI_API_KEY` no Supabase. O repositório deliberadamente não contém chaves privadas.
 
-- 114 vector rhythm strips.
-- 114 rhythm-recognition training questions.
-- 19 rhythm categories.
-- 190 complete rhythm-focused clinical cases in the study trail (10 per rhythm category).
-- Study lessons also include external references and YouTube links; external media are linked, not copied.
+## Escopo educacional
 
-## Backend
-
-Supabase remains optional. Demo mode works without it. Real authentication, persistent progress, admin workflows, and the AI tutor require a configured Supabase project and secrets.
+Os traçados são reconstruções vetoriais para treinamento. A plataforma não deve ser usada como ferramenta de diagnóstico de pacientes reais nem substituir avaliação clínica, protocolos institucionais ou julgamento profissional.

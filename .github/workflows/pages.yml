@@ -30,6 +30,9 @@ jobs:
       - name: Apply safe bilingual translation patch
         run: python3 scripts/patch_i18n.py
 
+      - name: Pass selected language to CardioTutor
+        run: python3 scripts/patch_app_language.py
+
       - name: Validate static bundle
         shell: bash
         run: |
@@ -42,11 +45,12 @@ jobs:
           test -f styles.css
           test "$(find assets/ecg -type f -name '*.svg' | wc -l)" -eq 114
           grep -q "assets/ecg/sinus_tachy/sinus_tachy_01.svg" real_cases.js
+          grep -q "language:window.ECG_LANG" app.js
           node --check app.js
           node --check real_cases.js
           node --check study_content.js
           node --check i18n.js
-          echo "Static bundle validated: 114 ECG SVGs generated; JavaScript syntax OK."
+          echo "Static bundle validated: 114 ECG SVGs generated; bilingual tutor payload present; JavaScript syntax OK."
 
       - name: Configure Pages
         uses: actions/configure-pages@v5

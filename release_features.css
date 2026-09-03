@@ -1,0 +1,26 @@
+/* Case reasoning — voice/text + AI feedback */
+.case-reasoning-tool{background:linear-gradient(180deg,rgba(110,168,255,.07),rgba(14,29,48,.96));border-color:rgba(110,168,255,.2)}
+.case-reasoning-tool>p{color:var(--muted);font-size:12px;line-height:1.55;margin:8px 0 12px}
+.case-reasoning-input{width:100%;min-height:150px;resize:vertical;background:#071626;color:#edf5ff;border:1px solid rgba(110,168,255,.24);border-radius:14px;padding:13px 14px;font:inherit;font-size:12px;line-height:1.55;outline:none;transition:.18s ease}
+.case-reasoning-input:focus{border-color:rgba(76,224,179,.55);box-shadow:0 0 0 3px rgba(76,224,179,.08)}
+.case-reasoning-actions{display:grid;grid-template-columns:auto 1fr;gap:9px;margin-top:10px}.case-reasoning-actions .btn{justify-content:center}
+.case-mic.listening{border-color:rgba(255,104,120,.55);background:rgba(255,104,120,.1);color:#ffd7dc;animation:micPulse 1.15s ease-in-out infinite}
+@keyframes micPulse{50%{box-shadow:0 0 0 7px rgba(255,104,120,.08)}}
+.case-ai-privacy{display:block;color:#7890ab;line-height:1.45;margin-top:9px;font-size:9.5px}
+.case-ai-status{min-height:18px;margin-top:8px;color:#9fb5ce;font-size:10.5px;line-height:1.4}
+.case-ai-feedback{margin-top:12px;padding-top:12px;border-top:1px solid var(--line);display:grid;gap:11px}
+.case-ai-score{display:grid;grid-template-columns:68px 1fr;gap:11px;align-items:center}.case-ai-score>div:first-child{height:62px;border-radius:16px;display:flex;align-items:baseline;justify-content:center;padding-top:13px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04)}.case-ai-score span{font-size:25px;font-weight:950;color:#fff}.case-ai-score small{font-size:10px;color:var(--muted)}.case-ai-score strong{font-size:13px}.case-ai-score p{margin:4px 0 0;color:#adbed1;font-size:10.5px;line-height:1.45}
+.case-ai-feedback.excellent .case-ai-score>div:first-child{background:rgba(76,224,179,.11);border-color:rgba(76,224,179,.24)}.case-ai-feedback.good .case-ai-score>div:first-child{background:rgba(110,168,255,.11);border-color:rgba(110,168,255,.24)}.case-ai-feedback.partial .case-ai-score>div:first-child{background:rgba(255,201,102,.09);border-color:rgba(255,201,102,.2)}.case-ai-feedback.review .case-ai-score>div:first-child{background:rgba(255,104,120,.09);border-color:rgba(255,104,120,.2)}
+.case-ai-grid{display:grid;gap:8px}.case-ai-grid section,.case-ai-reasoning,.case-ai-model-answer,.case-ai-next{padding:10px 11px;border-radius:12px;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.06)}
+.case-ai-feedback h5{margin:0 0 6px;font-size:10.5px;color:#e9f3ff}.case-ai-feedback ul,.case-ai-feedback ol{margin:0;padding-left:18px;color:#b9cadd;font-size:10.5px;line-height:1.55}.case-ai-feedback li+li{margin-top:3px}.case-ai-model-answer{background:rgba(76,224,179,.055);border-color:rgba(76,224,179,.12)}.case-ai-model-answer p{margin:0;color:#dff6ee;font-size:10.5px;line-height:1.55}.case-ai-reasoning{background:rgba(110,168,255,.045)}
+@media(max-width:720px){.case-reasoning-actions{grid-template-columns:1fr}.case-reasoning-input{min-height:130px}.case-ai-score{grid-template-columns:58px 1fr}.case-ai-score>div:first-child{height:56px}.case-ai-score span{font-size:22px}}
+
+/* Custom simulation builder */
+.sim-builder{padding:24px;display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,.72fr);gap:28px;align-items:center}.sim-builder-copy h2{margin:10px 0 8px;font-size:30px}.sim-builder-copy p{color:var(--muted);line-height:1.65;max-width:650px}.sim-count-panel{padding:20px;border:1px solid var(--line);border-radius:18px;background:rgba(255,255,255,.025)}.sim-count-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:13px}.sim-count-head label{font-weight:800}.sim-count-head strong{font-size:28px;color:var(--accent)}.sim-range{width:100%;accent-color:var(--accent);cursor:pointer}.sim-range-labels{display:flex;justify-content:space-between;color:var(--muted);font-size:11px;margin-top:5px}.sim-quick-counts{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:16px 0}.sim-quick-counts .chip{text-align:center;cursor:pointer}.sim-start-btn{margin-top:4px}.sim-count-note{text-align:center;font-size:11px;line-height:1.5;margin:11px 0 0}
+@media(max-width:900px){.sim-builder{grid-template-columns:1fr}.sim-builder-copy h2{font-size:26px}}
+@media(max-width:520px){.sim-builder{padding:18px;gap:18px}.sim-count-panel{padding:16px}.sim-quick-counts{grid-template-columns:repeat(2,1fr)}}
+
+/* In-depth lesson PDFs */
+.study-pdf-banner{display:flex;align-items:center;justify-content:space-between;gap:24px;margin:0 0 22px;padding:20px 22px;border:1px solid rgba(23,105,170,.22);background:linear-gradient(135deg,rgba(23,105,170,.08),rgba(15,139,141,.06))}
+.study-pdf-banner h3{margin:4px 0 6px;font-size:1.25rem}.study-pdf-banner p{margin:0;max-width:760px;color:var(--muted)}.study-pdf-open{white-space:nowrap}.lesson-tags span:nth-child(3){border-color:rgba(15,139,141,.25)}
+@media(max-width:760px){.study-pdf-banner{align-items:stretch;flex-direction:column}.study-pdf-open{width:100%;text-align:center}}

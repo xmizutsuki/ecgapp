@@ -1,157 +1,168 @@
 # ECG Lab — Plataforma Web de Treinamento em ECG
 
-Versão completa com biblioteca de ECG reconstruída em **SVG vetorial**.
+Aplicação web educacional bilíngue (Português / English) para treino estruturado de interpretação eletrocardiográfica.
 
-## Principal melhoria desta versão
+## O que esta versão entrega
 
-O problema de resolução foi eliminado na origem. Em vez de ampliar PNGs ou recortar ECGs de baixa resolução, o aplicativo utiliza traçados criados do zero como gráficos vetoriais.
+- **114 traçados educacionais em SVG vetorial**;
+- **19 temas de ritmo**, com **6 variações por tema**;
+- Lead II longo de 10 segundos para treino de reconhecimento de ritmo;
+- visualizador responsivo com zoom de até 8×, arraste e tela cheia;
+- treinamento adaptativo por desempenho;
+- trilha com **21 aulas** e **190 casos clínicos fictícios**;
+- CaseCoach com resposta em texto, ditado por voz do navegador e correção pedagógica por IA quando o backend está configurado;
+- simulados personalizados entre **20 e 80 questões**;
+- **42 PDFs de 6 páginas** gerados no build: 21 em português + 21 em inglês;
+- modo demonstração sem Supabase;
+- GitHub Actions com validação em pull requests e publicação automática no GitHub Pages após merge em `main`.
 
-Isso significa que o ECG permanece nítido em:
+## ECGs vetoriais
 
-- celular;
-- tablet;
-- notebook;
-- monitor Full HD;
-- monitor 2K/4K;
-- modo tela cheia;
-- zoom de até 8× no aplicativo.
+O problema de perda de resolução foi eliminado na origem. Os traçados não são PNGs ampliados: são reconstruídos do zero como SVGs e permanecem nítidos em celular, tablet, notebook, monitores de alta resolução, zoom e tela cheia.
 
-## Biblioteca incluída
-
-- **114 traçados educacionais**;
-- **19 temas**;
-- **6 variações diferentes de cada tema**;
-- arquivos locais, sem depender da internet para carregar os ECGs;
-- uma única derivação longa em **Lead II**, priorizando reconhecimento de ritmo;
-- grade ECG padronizada;
-- visualização responsiva;
-- zoom por botões e roda do mouse;
-- arraste horizontal/vertical;
-- duplo clique para ampliar;
-- tela cheia.
-
-Os temas e limitações da biblioteca estão descritos em `DATA_SOURCES.md`.
-
-## Rodar localmente
-
-Abra `index.html` em um navegador moderno.
-
-O modo demonstração funciona sem Supabase.
-
-## Publicar no GitHub Pages
-
-O repositório inclui `.github/workflows/pages.yml`. Cada push para `main` gera os 114 SVGs, cria os 42 PDFs bilíngues, valida o bundle e publica o site pelo GitHub Actions/Pages. Em `Settings → Pages`, a origem deve estar configurada para **GitHub Actions**.
-
-O endereço deste repositório no GitHub Pages é:
+A biblioteca é gerada deterministicamente por:
 
 ```text
-https://xmizutsuki.github.io/ecgapp/
+scripts/generate_ecg_svgs.py
 ```
 
-## Arquivos essenciais
+Durante o build são criados:
 
 ```text
-index.html
-styles.css
-app.js
-config.js
-real_cases.js
-assets/ecg/
+assets/ecg/<ritmo>/<ritmo>_01.svg ... <ritmo>_06.svg
 ```
 
-**A pasta `assets/ecg` é essencial**, pois contém os 114 traçados SVG.
+Os arquivos gerados não precisam ser versionados individualmente no GitHub; o workflow os recria antes da validação e do deploy.
 
-## Supabase
+Os temas, fontes e limitações estão documentados em `DATA_SOURCES.md` e `ECG_LIBRARY_MANIFEST.md`.
 
-É opcional para a demonstração. Para login real, persistência de progresso e funções administrativas, configure `config.js` e execute os scripts da pasta `supabase`.
+## Trilha de estudos
 
-Nunca publique chaves privadas, `service_role`, senha do banco ou `OPENAI_API_KEY` no GitHub.
+Todos os módulos ficam liberados desde o primeiro acesso. A trilha contém:
 
-## Aviso educacional
+- 21 aulas, do método básico de leitura a isquemia/ST-T;
+- 190 estudos de caso fictícios;
+- anamnese, sinais vitais, exame físico, laboratório, imagem/outros exames e ECG educacional;
+- pergunta de raciocínio antes da resposta comentada;
+- pegadinhas leves e pontos de aprendizagem;
+- links para vídeos externos no canal original, sem copiar ou redistribuir os vídeos;
+- referências para aprofundamento.
 
-Os traçados incluídos são reconstruções/simulações para ensino. Não representam ECGs de pacientes e não substituem avaliação clínica, laudo profissional, protocolos institucionais ou julgamento clínico.
+A aula de isquemia deixa explícito que localização de isquemia, eixo, bloqueios de ramo e vários diagnósticos morfológicos exigem ECG de 12 derivações; Lead II isolada é usada principalmente para treino de ritmo.
 
-## Treino adaptativo (CAT)
+## PDFs aprofundados
 
-O modo **Treinar ECG** não segue mais uma sequência fixa por tema. Ele usa seleção adaptativa inspirada em testes computadorizados adaptativos:
+Cada aula possui um guia PDF de 6 páginas em português e em inglês. Os PDFs são gerados por:
 
-- as 3 primeiras questões são de dificuldade 1;
-- todas as categorias elegíveis são misturadas;
-- o mesmo tema é evitado em questões consecutivas quando há alternativas no banco;
-- acertos elevam gradualmente a dificuldade estimada;
-- erros reduzem/estabilizam a dificuldade;
-- categorias com menor desempenho recebem maior probabilidade de reaparecer;
-- questões já vistas são evitadas até o banco disponível precisar ser reciclado;
-- não é possível pular uma questão sem responder;
-- o diagnóstico do traçado fica oculto até a resposta ser confirmada.
+```text
+scripts/generate_lesson_pdfs.py
+```
 
-O algoritmo é educacional e inspirado no conceito de CAT; não reproduz nem afirma reproduzir o algoritmo oficial do NCLEX.
+O workflow produz:
 
+```text
+assets/lessons/pt/*.pdf
+assets/lessons/en/*.pdf
+```
 
-## Trilha de estudos v3
+Cada guia inclui visão geral, fisiologia, critérios de reconhecimento, um traçado vetorial quando aplicável, diagnósticos diferenciais, raciocínio clínico, armadilhas, autoavaliação e referências.
 
-- Todos os módulos e aulas ficam liberados desde o primeiro acesso.
-- 21 aulas autorais, do básico a isquemia/ST-T.
-- 190 estudos de caso fictícios: 10 para cada tipo de ritmo da biblioteca.
-- Cada caso combina anamnese, sinais vitais, exame físico, laboratório, imagem/outros exames, ECG vetorial, pergunta, resposta comentada e uma pegadinha leve.
-- Conteúdo audiovisual de terceiros não é copiado: o app oferece somente links para os vídeos nos canais originais do YouTube, com canal/título visíveis.
-- Referências externas são listadas ao final de cada aula; o texto principal é síntese autoral do ECG Lab.
-
-### Fontes educacionais externas usadas na trilha
-
-- Ninja Nerd — ECG Basics.
-- ICU Advantage — Complete ECG Rhythm Interpretation Series e Heart Blocks Made Easy.
-- Strong Medicine — AV Block.
-- Nurse Cheung — Pacemaker Rhythms.
-- MedCram — ST Elevation / ECG Interpretation.
-- NCBI Bookshelf / StatPearls — referências de aprofundamento por ritmo.
-
-Os links permanecem sob controle de seus respectivos autores/plataformas e podem mudar ou ser removidos.
-
+A referência fisiológica principal é **Guyton and Hall Textbook of Medical Physiology, 15th ed.**. Diretrizes específicas complementam o conteúdo, incluindo AF 2023, SVT 2015, bradicardia/condução 2018, arritmias ventriculares 2017 e síndrome coronariana aguda 2025. Nenhuma figura do tratado é reproduzida; os traçados usados nos PDFs são reconstruções do próprio ECG Lab.
 
 ## Português / English
 
-Esta versão possui seleção de idioma antes da entrada no aplicativo. Na primeira abertura, o usuário escolhe **Português (Brasil)** ou **English**. A preferência é salva localmente no navegador e pode ser alterada pelo botão de idioma no topo do aplicativo.
+Na primeira abertura, o usuário escolhe **Português (Brasil)** ou **English**. A preferência é salva localmente.
 
-A localização inclui interface, treinamento adaptativo, questões, alternativas, explicações, trilha de estudos, módulos, aulas e estudos de caso. Títulos originais de vídeos e links externos permanecem associados à fonte original.
+A interface e o conteúdo dinâmico usam `i18n.js` + `localize_data.js`. Antes de publicar, o build executa `scripts/patch_i18n.py`, que torna a substituição de termos sensível a limites de palavras e evita corrupção de substrings por traduções curtas. O payload do CardioTutor também recebe o idioma selecionado.
 
-## Correção de estudos de caso com voz/texto + IA
+Títulos originais de vídeos e URLs externos permanecem associados às fontes originais.
 
-Cada estudo de caso agora possui uma área de **recordação ativa** antes da resposta comentada:
+## CaseCoach — texto, voz e IA
 
-- o aluno pode escrever sua interpretação em texto;
-- em navegadores compatíveis, pode ditar a resposta pelo microfone usando reconhecimento de voz do navegador;
-- o texto é enviado ao `ecg-tutor` para avaliação pedagógica;
-- a IA devolve nota de 0–100, pontos corretos, correções, provável motivo do erro, raciocínio correto passo a passo, resposta-modelo e o que observar na próxima tentativa;
-- a última tentativa fica salva localmente no navegador por caso e idioma;
-- se o backend de IA não estiver configurado, o app exibe um feedback local de referência claramente identificado como não-IA.
+Nos estudos de caso, o estudante pode explicar o raciocínio antes de revelar a análise.
 
-### Ativar a correção por IA
+- resposta digitada;
+- ditado com `SpeechRecognition` / `webkitSpeechRecognition` quando suportado pelo navegador;
+- envio do **texto transcrito**, não do áudio, ao backend do ECG Lab;
+- nota de 0–100;
+- pontos corretos;
+- correções;
+- possíveis motivos do erro;
+- raciocínio correto passo a passo;
+- resposta-modelo;
+- o que observar na próxima tentativa.
 
-A chave da OpenAI deve permanecer **somente no Supabase**, nunca no GitHub ou no JavaScript do navegador.
+Sem backend, o aplicativo mostra um feedback local de referência claramente identificado como não-IA.
 
-1. Configure o Supabase em `config.js`.
-2. Defina o secret `OPENAI_API_KEY` no projeto Supabase.
-3. Opcionalmente, defina `OPENAI_MODEL` (o padrão do projeto é `gpt-5.4-mini`).
-4. Publique novamente a Edge Function:
+A Edge Function `supabase/functions/ecg-tutor/index.ts` suporta dois modos:
+
+```text
+tutor
+case-feedback
+```
+
+O modelo padrão configurado na função é:
+
+```text
+gpt-5.6-luna
+```
+
+Ele pode ser substituído pelo secret/variável `OPENAI_MODEL` no ambiente Supabase.
+
+## Supabase e segurança
+
+O Supabase é opcional no modo demonstração. Para login real, persistência e correção por IA:
+
+1. configure `SUPABASE_URL` e a publishable/anon key em `config.js`;
+2. aplique `supabase/schema.sql` e `supabase/seed.sql`;
+3. defina `OPENAI_API_KEY` **somente nos secrets do Supabase**;
+4. opcionalmente defina `OPENAI_MODEL`;
+5. publique a função:
 
 ```bash
 supabase functions deploy ecg-tutor
 ```
 
-O modo `case-feedback` da função utiliza resposta estruturada para manter o feedback consistente entre os casos.
-
-### Voz e privacidade
-
-O reconhecimento de voz é um recurso oferecido pelo navegador e pode não existir em todos os dispositivos. O aplicativo envia ao backend do ECG Lab apenas o **texto resultante** da transcrição e os dados do caso fictício; o tratamento do áudio pelo mecanismo de reconhecimento depende do navegador utilizado.
+Nunca publique `OPENAI_API_KEY`, `service_role`, senha de banco ou outra chave privada no repositório ou no JavaScript do navegador.
 
 ## Simulados personalizados
-A aba **Simulados** permite selecionar livremente entre **20 e 80 questões**. O usuário pode usar o controle deslizante ou atalhos de 20, 40, 60 e 80 questões. As questões são embaralhadas a cada tentativa e o resultado é apresentado ao final. A interface acompanha o idioma selecionado no app.
 
+A aba **Simulados** permite selecionar entre 20 e 80 questões. As questões são embaralhadas em cada tentativa, o progresso é mostrado durante o simulado e o resultado aparece ao final.
 
-## PDFs aprofundados da Trilha de Estudos
-Cada uma das 21 aulas possui um guia PDF de 6 páginas em Português e em English, aberto conforme o idioma selecionado no app. Os guias incluem fisiologia, ECG vetorial do próprio projeto, diagramas originais, critérios de reconhecimento, diferenciais, raciocínio clínico, pegadinhas, autoavaliação e referências.
+## Rodar localmente como a versão de produção
 
-A referência fisiológica principal é **Hall JE, Hall ME. Guyton and Hall Textbook of Medical Physiology, 15th ed. Elsevier (2025), especialmente Unidade III, capítulos 9-13**. Para critérios e contexto clínico, são adicionadas diretrizes ACC/AHA/HRS específicas. Nenhuma figura ou trecho extenso de Guyton & Hall é reproduzido: todas as figuras, diagramas e traçados incorporados aos PDFs são criações/reconstruções educacionais do ECG Lab.
+Na raiz do repositório:
 
-Os PDFs ficam em `assets/lessons/pt/` e `assets/lessons/en/`. O script `scripts/generate_lesson_pdfs.py` reconstrói a biblioteca.
+```bash
+python -m pip install reportlab cairosvg pypdf
+python scripts/patch_i18n.py
+python scripts/patch_app_language.py
+python scripts/generate_ecg_svgs.py
+python scripts/generate_lesson_pdfs.py
+python -m http.server 8000
+```
+
+Depois abra `http://localhost:8000`.
+
+## GitHub Pages
+
+O workflow `.github/workflows/pages.yml`:
+
+1. valida pull requests para `main`;
+2. endurece a localização bilíngue;
+3. gera 114 SVGs;
+4. gera 42 PDFs;
+5. valida referências de scripts, sintaxe JavaScript/Python e quantidade/paginação dos PDFs;
+6. em `main`, publica o artefato no GitHub Pages.
+
+Em **Settings → Pages**, a origem deve ser **GitHub Actions**.
+
+Site esperado:
+
+```text
+https://xmizutsuki.github.io/ecgapp/
+```
+
+## Aviso educacional
+
+Os traçados e casos são reconstruções/simulações para ensino. Não representam ECGs ou pacientes reais e não substituem avaliação clínica, laudo profissional, protocolos institucionais ou julgamento clínico.

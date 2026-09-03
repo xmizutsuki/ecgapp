@@ -13,6 +13,10 @@ Thumbs.db
 node_modules/
 dist/
 
+# Generated build assets (recreated by GitHub Actions)
+assets/ecg/**/*.svg
+assets/lessons/**/*.pdf
+
 # Supabase local development
 .supabase/
 supabase/.temp/

@@ -52,3 +52,9 @@ A trilha não redistribui vídeos nem transcreve integralmente material de terce
 - NCBI Bookshelf / StatPearls: links específicos aparecem em cada aula.
 
 Todo caso clínico presente no `study_content.js` é fictício e foi criado para treinamento. Nenhum caso representa paciente real.
+
+
+## Guias PDF da Trilha
+Referência fisiológica principal: Hall JE, Hall ME. *Guyton and Hall Textbook of Medical Physiology*. 15th ed. Elsevier; 2025. ISBN 9780443111013. Unidade III (coração), especialmente capítulos 9-13; capítulo 21 quando o tema envolve circulação coronariana/isquemia.
+
+Os guias também citam diretrizes oficiais ACC/AHA/HRS conforme o tema (fibrilação atrial, bradicardia/bloqueios, SVT, arritmias ventriculares e síndrome coronariana aguda). O texto é síntese autoral e as figuras são originais do ECG Lab; não são reproduzidas figuras do livro.

@@ -3,38 +3,53 @@
 // Secret required: GROQ_API_KEY
 // Optional: GROQ_MODEL (default: openai/gpt-oss-20b)
 // Optional: GROQ_FALLBACK_MODEL (default: llama-3.1-8b-instant)
+//
+// Beta 1.0 supports both authenticated learners and guests. JWT verification is
+// disabled at the Edge gateway for this function; authenticated tokens are still
+// validated here when present. Guests are protected by server-side hashed rate
+// limit buckets so no raw IP address is stored in Postgres.
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-ecg-guest-id",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
+
+type Caller = { authenticated: boolean; userId: string | null };
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Method not allowed." }, 405);
+  if (!originAllowed(req.headers.get("Origin"))) return json({ error: "Origin not allowed." }, 403);
+
+  const contentLength = Number(req.headers.get("content-length") || 0);
+  if (Number.isFinite(contentLength) && contentLength > 40000) {
+    return json({ error: "Request payload is too large." }, 413);
+  }
 
   try {
-    const auth = req.headers.get("Authorization");
-    if (!auth?.startsWith("Bearer ")) return json({ error: "User not authenticated." }, 401);
-
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
-    if (!supabaseUrl || !anonKey) return json({ error: "Supabase environment is not configured." }, 500);
-
-    const userCheck = await fetch(`${supabaseUrl}/auth/v1/user`, {
-      headers: { Authorization: auth, apikey: anonKey },
-    });
-    if (!userCheck.ok) return json({ error: "Invalid session." }, 401);
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const groqKey = Deno.env.get("GROQ_API_KEY");
+    if (!supabaseUrl || !anonKey || !serviceRoleKey) {
+      return json({ error: "Supabase environment is not configured." }, 500);
+    }
+    if (!groqKey) return json({ error: "GROQ_API_KEY is not configured." }, 500);
 
     const body = await req.json();
     const language = body?.language === "en" ? "en" : "pt-BR";
-    const mode = body?.mode === "case-feedback" ? "case-feedback" : "tutor";
-    const groqKey = Deno.env.get("GROQ_API_KEY");
-    if (!groqKey) return json({ error: "GROQ_API_KEY is not configured." }, 500);
+    const caller = await identifyCaller(req, supabaseUrl, anonKey);
+    const allowed = await consumeAiQuota(req, caller, supabaseUrl, serviceRoleKey);
+    if (!allowed) {
+      return json({ error: language === "en"
+        ? "AI usage limit reached. Please wait a little and try again."
+        : "Limite de uso da IA atingido. Aguarde um pouco e tente novamente." }, 429, { "Retry-After": "60" });
+    }
 
+    const mode = body?.mode === "case-feedback" ? "case-feedback" : "tutor";
     return mode === "case-feedback"
       ? await handleCaseFeedback(body, language, groqKey)
       : await handleTutor(body, language, groqKey);
@@ -42,6 +57,87 @@ serve(async (req) => {
     return json({ error: friendlyError(e) }, errorStatus(e));
   }
 });
+
+function originAllowed(origin: string | null) {
+  if (!origin) return true;
+  if (origin === "https://xmizutsuki.github.io") return true;
+  return /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin);
+}
+
+async function identifyCaller(req: Request, supabaseUrl: string, anonKey: string): Promise<Caller> {
+  const auth = req.headers.get("Authorization");
+  if (!auth) return { authenticated: false, userId: null };
+  if (!auth.startsWith("Bearer ")) throw httpError("Invalid authorization header.", 401);
+
+  const userCheck = await fetch(`${supabaseUrl}/auth/v1/user`, {
+    headers: { Authorization: auth, apikey: anonKey },
+  });
+  if (!userCheck.ok) throw httpError("Invalid session.", 401);
+  const user = await userCheck.json().catch(() => null);
+  const userId = typeof user?.id === "string" ? user.id : null;
+  if (!userId) throw httpError("Invalid session.", 401);
+  return { authenticated: true, userId };
+}
+
+async function consumeAiQuota(req: Request, caller: Caller, supabaseUrl: string, serviceRoleKey: string) {
+  const guestIdRaw = (req.headers.get("X-ECG-Guest-ID") || "").trim().slice(0, 128);
+  const guestId = /^[A-Za-z0-9._:-]{8,128}$/.test(guestIdRaw) ? guestIdRaw : "guest";
+  const forwarded = (req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "unknown").split(",")[0].trim();
+  const ua = (req.headers.get("user-agent") || "unknown").slice(0, 180);
+  const rawKey = caller.authenticated && caller.userId
+    ? `user:${caller.userId}`
+    : `guest:${guestId}|ip:${forwarded}|ua:${ua}`;
+  const bucket = await sha256(rawKey);
+
+  const hourly = await consumeQuotaRpc(
+    supabaseUrl,
+    serviceRoleKey,
+    bucket,
+    caller.authenticated ? 240 : 60,
+    3600,
+  );
+  if (!hourly) return false;
+
+  return await consumeQuotaRpc(
+    supabaseUrl,
+    serviceRoleKey,
+    `${bucket}:burst`,
+    caller.authenticated ? 30 : 12,
+    60,
+  );
+}
+
+async function consumeQuotaRpc(
+  supabaseUrl: string,
+  serviceRoleKey: string,
+  key: string,
+  limit: number,
+  windowSeconds: number,
+) {
+  const r = await fetch(`${supabaseUrl}/rest/v1/rpc/consume_ai_quota`, {
+    method: "POST",
+    headers: {
+      apikey: serviceRoleKey,
+      Authorization: `Bearer ${serviceRoleKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ p_key: key, p_limit: limit, p_window_seconds: windowSeconds }),
+  });
+  if (!r.ok) throw httpError("AI rate limiter is temporarily unavailable.", 503);
+  return (await r.json().catch(() => false)) === true;
+}
+
+async function sha256(value: string) {
+  const bytes = new TextEncoder().encode(value);
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+function httpError(message: string, status: number) {
+  const e: any = new Error(message);
+  e.status = status;
+  return e;
+}
 
 async function handleTutor(body: any, language: string, apiKey: string) {
   const message = body?.message;
@@ -224,10 +320,13 @@ function friendlyError(e: any) {
 
 function errorStatus(e: any) {
   if (e?.status === 429 || /quota|rate limit|too many requests/i.test(e?.message || "")) return 429;
-  if (e?.status === 401 || e?.status === 403) return e.status;
+  if (e?.status === 401 || e?.status === 403 || e?.status === 413 || e?.status === 503) return e.status;
   return 500;
 }
 
-function json(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+function json(body: unknown, status = 200, extraHeaders: Record<string, string> = {}) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, ...extraHeaders, "Content-Type": "application/json" },
+  });
 }

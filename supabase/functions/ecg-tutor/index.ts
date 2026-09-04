@@ -1,17 +1,20 @@
-// Supabase Edge Function: ecg-tutor
-// Secrets required: OPENAI_API_KEY
-// Optional: OPENAI_MODEL (default: gpt-5.6-luna)
-// Deploy with: supabase functions deploy ecg-tutor
+// ECG Lab — CardioTutor / CaseCoach
+// Primary provider: Google Gemini
+// Secret required: GEMINI_API_KEY
+// Optional: GEMINI_MODEL (default: gemini-3.6-flash)
+// Optional: GEMINI_FALLBACK_MODEL (default: gemini-3.5-flash-lite)
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  if (req.method !== "POST") return json({ error: "Method not allowed." }, 405);
 
   try {
     const auth = req.headers.get("Authorization");
@@ -29,14 +32,14 @@ serve(async (req) => {
     const body = await req.json();
     const language = body?.language === "en" ? "en" : "pt-BR";
     const mode = body?.mode === "case-feedback" ? "case-feedback" : "tutor";
+    const geminiKey = Deno.env.get("GEMINI_API_KEY");
+    if (!geminiKey) return json({ error: "GEMINI_API_KEY is not configured." }, 500);
 
-    const apiKey = Deno.env.get("OPENAI_API_KEY");
-    if (!apiKey) return json({ error: "OPENAI_API_KEY is not configured." }, 500);
-
-    if (mode === "case-feedback") return await handleCaseFeedback(body, language, apiKey);
-    return await handleTutor(body, language, apiKey);
+    return mode === "case-feedback"
+      ? await handleCaseFeedback(body, language, geminiKey)
+      : await handleTutor(body, language, geminiKey);
   } catch (e) {
-    return json({ error: e?.message || "Internal error." }, 500);
+    return json({ error: friendlyError(e) }, errorStatus(e));
   }
 });
 
@@ -50,39 +53,26 @@ async function handleTutor(body: any, language: string, apiKey: string) {
   const history = sanitizeHistory(body?.history);
   const socratic = body?.socratic_mode === true;
 
-  // Exam Mode is intentionally enforced before any AI call.
   if (context?.activityType === "simulation" && context?.examMode === "exam") {
-    return json({
-      error: language === "en"
-        ? "AI Tutor is locked until this Exam Mode practice exam is completed."
-        : "O Tutor IA fica bloqueado até a finalização deste simulado em Modo Prova."
-    }, 423);
+    return json({ error: language === "en"
+      ? "AI Tutor is locked until this Exam Mode practice exam is completed."
+      : "O Tutor IA fica bloqueado até a finalização deste simulado em Modo Prova." }, 423);
   }
 
   const preAnswer = !!context && context.answerSubmitted === false;
   const instructions = language === "en"
-    ? `You are CardioTutor, ECG Lab's EDUCATIONAL, contextual electrocardiography tutor.
-Respond in clear international English and use a structured teaching style.
-Teach a systematic method: rate, regularity, P wave, PR, QRS, axis when relevant, ST-T, and conclusion.
-The context describes the learning screen that is already open. Use it naturally so the student does not need to restate the question, case, or ECG.
-IMPORTANT LEARNING RULE: when context.answerSubmitted is false, NEVER reveal the correct option, diagnosis, reference answer, or a statement that effectively gives the answer. Do not infer a hidden answer from metadata. Give hints, ask the student to inspect specific ECG features, and help them reason step by step. After answerSubmitted becomes true, you may explain the correct answer, why alternatives are wrong, and the educational reasoning.
-${socratic ? "SOCRATIC MODE IS ON: prefer one focused question at a time, wait for the learner's reasoning, and avoid immediately giving conclusions even after submission unless needed to correct a misconception." : "Socratic mode is off: you may explain directly while still protecting unanswered questions."}
-When the learner explains reasoning, organize feedback around: what was identified correctly, what needs correction, what was missed, how to reach the conclusion, and one key point to remember.
-Use performanceMemory only as gentle background context. Tutor use is not evidence of weakness by itself.
-The ECG Lab tracings are synthetic educational reconstructions. Do not claim they are real-patient ECGs.
-Do not diagnose real-patient ECGs, replace clinical assessment, or provide individualized emergency management. If real-patient data are supplied, redirect to general educational principles.
-Be concise but show the reasoning.`
+    ? `You are CardioTutor, ECG Lab's EDUCATIONAL contextual electrocardiography tutor.
+Respond in clear international English. Teach a systematic ECG method: rate, regularity, P wave, PR, QRS, axis when relevant, ST-T, and conclusion.
+Use the supplied educational screen context naturally.
+CRITICAL LEARNING RULE: when context.answerSubmitted is false, never reveal the correct option, diagnosis, reference answer, or wording that gives it away. Give hints and guide reasoning step by step. After submission, explain the answer and why alternatives are wrong.
+${socratic ? "SOCRATIC MODE: prefer one focused question at a time and wait for the learner's reasoning." : "Socratic mode is off: explain directly while still protecting unanswered questions."}
+ECG Lab tracings are synthetic educational reconstructions. Never claim they are real-patient ECGs. Do not diagnose real-patient ECGs or replace clinical assessment. Be concise, accurate, and educational.`
     : `Você é o CardioTutor do ECG Lab, um tutor EDUCACIONAL e contextual de eletrocardiografia.
-Responda em português brasileiro, de forma didática e estruturada.
-Ensine um método sistemático: frequência, regularidade, onda P, PR, QRS, eixo quando pertinente, ST-T e conclusão.
-O contexto descreve a tela educacional que já está aberta. Use-o naturalmente para que o estudante não precise repetir a questão, o caso ou o ECG.
-REGRA EDUCACIONAL IMPORTANTE: quando context.answerSubmitted for false, NUNCA revele a alternativa correta, o diagnóstico, a resposta de referência ou uma frase que entregue efetivamente a resposta. Não infira uma resposta escondida a partir de metadados. Dê dicas, peça ao estudante para observar características específicas do ECG e conduza o raciocínio passo a passo. Depois que answerSubmitted for true, você poderá explicar a resposta correta, por que as alternativas estão erradas e o raciocínio educacional completo.
-${socratic ? "MODO SOCRÁTICO ATIVADO: prefira uma pergunta focada por vez, aguarde o raciocínio do aluno e evite entregar conclusões imediatamente, mesmo após a tentativa, salvo quando necessário para corrigir um conceito." : "Modo Socrático desativado: você pode explicar de forma mais direta, mantendo a proteção das questões ainda não respondidas."}
-Quando o aluno explicar o raciocínio, organize o feedback em: o que identificou corretamente, o que precisa ser corrigido, o que deixou de observar, como chegar à conclusão e um ponto-chave para lembrar.
-Use performanceMemory apenas como contexto pedagógico leve. O uso do Tutor, isoladamente, não é sinal de fraqueza.
-Os traçados do ECG Lab são reconstruções educacionais sintéticas. Não afirme que são ECGs reais de pacientes.
-Não diagnostique ECGs reais de pacientes, não substitua avaliação clínica e não dê conduta individualizada de emergência. Se forem fornecidos dados de paciente real, redirecione para princípios educacionais gerais.
-Seja conciso, mas explique o raciocínio.`;
+Responda em português brasileiro. Ensine um método sistemático de ECG: frequência, regularidade, onda P, PR, QRS, eixo quando pertinente, ST-T e conclusão.
+Use naturalmente o contexto educacional da tela fornecido pelo aplicativo.
+REGRA PEDAGÓGICA CRÍTICA: quando context.answerSubmitted for false, nunca revele a alternativa correta, o diagnóstico, a resposta de referência ou uma formulação que entregue a resposta. Dê dicas e conduza o raciocínio passo a passo. Após a tentativa, explique a resposta e por que as alternativas estão erradas.
+${socratic ? "MODO SOCRÁTICO: prefira uma pergunta focada por vez e aguarde o raciocínio do aluno." : "Modo Socrático desativado: explique diretamente, preservando questões ainda não respondidas."}
+Os traçados do ECG Lab são reconstruções educacionais sintéticas. Nunca diga que são ECGs reais de pacientes. Não diagnostique ECGs reais nem substitua avaliação clínica. Seja conciso, preciso e didático.`;
 
   const input = JSON.stringify({
     learner_message: message,
@@ -92,29 +82,34 @@ Seja conciso, mas explique o raciocínio.`;
     socratic_mode: socratic,
   });
 
-  const data = await openAI(apiKey, instructions, input, 900);
-  const reply = extractText(data) || (language === "en"
-    ? "I could not generate a response right now."
-    : "Não consegui gerar uma resposta agora.");
-  return json({ reply }, 200);
+  const reply = await geminiText(apiKey, instructions, input, 900, false);
+  return json({ reply: reply || (language === "en" ? "I could not generate a response right now." : "Não consegui gerar uma resposta agora.") });
+}
+
+async function handleCaseFeedback(body: any, language: string, apiKey: string) {
+  const answer = body?.student_answer;
+  const c = body?.case_data;
+  if (!answer || typeof answer !== "string" || answer.length < 12 || answer.length > 5000 || !c || typeof c !== "object") {
+    return json({ error: language === "en" ? "Invalid case feedback payload." : "Dados inválidos para correção do caso." }, 400);
+  }
+
+  const instructions = language === "en"
+    ? `You are CardioTutor's CaseCoach, an EDUCATIONAL ECG reasoning evaluator. The supplied case is fictional and belongs to ECG Lab. Compare the student's reasoning with the reference answer and reasoning. Score 0-100, reward correct observations even if the final diagnosis is wrong, identify concrete mistakes and likely reasoning errors, and give a concise step-by-step model approach. Return ONLY valid JSON with exactly these keys: {"score":number,"verdict":string,"summary":string,"strengths":string[],"corrections":string[],"error_reasons":string[],"correct_reasoning":string[],"ideal_answer":string,"next_time":string[]}. Keep arrays to 1-5 concise items.`
+    : `Você é o CaseCoach do CardioTutor, um avaliador EDUCACIONAL de raciocínio em ECG. O caso é fictício e pertence ao ECG Lab. Compare o raciocínio do estudante com a resposta e o raciocínio de referência. Dê nota de 0 a 100, valorize observações corretas mesmo se o diagnóstico final estiver errado, identifique erros concretos e causas prováveis e apresente um modelo passo a passo conciso. Retorne SOMENTE JSON válido com exatamente estas chaves: {"score":number,"verdict":string,"summary":string,"strengths":string[],"corrections":string[],"error_reasons":string[],"correct_reasoning":string[],"ideal_answer":string,"next_time":string[]}. Mantenha cada lista com 1-5 itens concisos.`;
+
+  const input = JSON.stringify({ student_answer: answer, case: sanitizeCase(c) });
+  const raw = await geminiText(apiKey, instructions, input, 1200, true);
+  const parsed = parseJsonObject(raw);
+  if (!parsed) return json({ error: language === "en" ? "AI returned an invalid feedback format." : "A IA retornou um formato de feedback inválido." }, 502);
+  return json({ feedback: normalizeFeedback(parsed, language) });
 }
 
 function sanitizeTutorContext(value: any) {
   if (!value || typeof value !== "object") return null;
-  const allowed = [
-    "language", "currentModule", "activityType", "activityId", "questionId", "questionText",
-    "alternatives", "selectedAnswer", "answerSubmitted", "correctAnswer", "explanation", "ecgData",
-    "caseData", "lesson", "topic", "category", "difficulty", "sessionProgress", "examMode", "label",
-    "performanceMemory"
-  ];
+  const allowed = ["language","currentModule","activityType","activityId","questionId","questionText","alternatives","selectedAnswer","answerSubmitted","correctAnswer","explanation","ecgData","caseData","lesson","topic","category","difficulty","sessionProgress","examMode","label","performanceMemory"];
   const out: Record<string, unknown> = {};
   for (const key of allowed) if (value[key] !== undefined) out[key] = value[key];
-
-  // Defense in depth: hidden answers must not enter the model context before a learner attempt.
-  if (out.answerSubmitted === false) {
-    delete out.correctAnswer;
-    delete out.explanation;
-  }
+  if (out.answerSubmitted === false) { delete out.correctAnswer; delete out.explanation; }
   return JSON.parse(JSON.stringify(out).slice(0, 16000));
 }
 
@@ -127,68 +122,78 @@ function sanitizeHistory(value: any) {
   });
 }
 
-async function handleCaseFeedback(body: any, language: string, apiKey: string) {
-  const answer = body?.student_answer;
-  const c = body?.case_data;
-  if (!answer || typeof answer !== "string" || answer.length < 12 || answer.length > 5000 || !c || typeof c !== "object") {
-    return json({ error: language === "en" ? "Invalid case feedback payload." : "Dados inválidos para correção do caso." }, 400);
-  }
-
-  const instructions = language === "en"
-    ? `You are CardioTutor's CaseCoach, an EDUCATIONAL ECG reasoning evaluator.
-The supplied case is fictional and belongs to ECG Lab. Evaluate the student's reasoning against the supplied reference answer and reference reasoning.
-Score the reasoning from 0 to 100. Reward correct observations, even when the final diagnosis is wrong. Identify concrete mistakes, explain likely reasoning errors, and provide a concise step-by-step model approach.
-Do not introduce patient-specific medical advice. Do not claim certainty beyond the supplied educational case.
-Return ONLY valid JSON, with no Markdown, using exactly these keys:
-{"score":number,"verdict":string,"summary":string,"strengths":string[],"corrections":string[],"error_reasons":string[],"correct_reasoning":string[],"ideal_answer":string,"next_time":string[]}
-Keep each array to 1–5 concise items.`
-    : `Você é o CaseCoach do CardioTutor, um avaliador EDUCACIONAL de raciocínio em ECG.
-O caso fornecido é fictício e pertence ao ECG Lab. Avalie o raciocínio do estudante comparando-o com a resposta esperada e o raciocínio de referência fornecidos.
-Dê nota de 0 a 100. Valorize observações corretas mesmo quando o diagnóstico final estiver errado. Identifique erros concretos, explique causas prováveis do erro de raciocínio e forneça um modelo conciso passo a passo.
-Não ofereça conduta individualizada para paciente real. Não afirme certeza além do caso educacional fornecido.
-Retorne SOMENTE JSON válido, sem Markdown, usando exatamente estas chaves:
-{"score":number,"verdict":string,"summary":string,"strengths":string[],"corrections":string[],"error_reasons":string[],"correct_reasoning":string[],"ideal_answer":string,"next_time":string[]}
-Mantenha cada lista com 1–5 itens concisos.`;
-
-  const input = JSON.stringify({ student_answer: answer, case: sanitizeCase(c) });
-  const data = await openAI(apiKey, instructions, input, 1200);
-  const raw = extractText(data);
-  const parsed = parseJsonObject(raw);
-  if (!parsed) return json({ error: language === "en" ? "AI returned an invalid feedback format." : "A IA retornou um formato de feedback inválido." }, 502);
-  return json({ feedback: normalizeFeedback(parsed, language) }, 200);
-}
-
 function sanitizeCase(c: any) {
-  const allowed = [
-    "title", "chief_complaint", "anamnesis", "medications", "vitals", "physical_exam",
-    "labs", "imaging", "question", "expected_answer", "reference_reasoning", "trap", "learning_point",
-  ];
+  const allowed = ["title","chief_complaint","anamnesis","medications","vitals","physical_exam","labs","imaging","question","expected_answer","reference_reasoning","trap","learning_point"];
   const out: Record<string, unknown> = {};
   for (const key of allowed) if (c?.[key] !== undefined) out[key] = c[key];
   return out;
 }
 
-async function openAI(apiKey: string, instructions: string, input: string, maxOutputTokens: number) {
-  const r = await fetch("https://api.openai.com/v1/responses", {
-    method: "POST",
-    headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: Deno.env.get("OPENAI_MODEL") || "gpt-5.6-luna",
-      instructions,
-      input,
-      max_output_tokens: maxOutputTokens,
-    }),
-  });
+async function geminiText(apiKey: string, systemInstruction: string, input: string, maxOutputTokens: number, jsonMode: boolean) {
+  const preferred = Deno.env.get("GEMINI_MODEL") || "gemini-3.6-flash";
+  const fallback = Deno.env.get("GEMINI_FALLBACK_MODEL") || "gemini-3.5-flash-lite";
+  const models = [...new Set([preferred, fallback].filter(Boolean))];
+  let lastError: any = null;
 
-  const data = await r.json();
-  if (!r.ok) throw new Error(data?.error?.message || "AI service error.");
-  return data;
+  for (const model of models) {
+    try {
+      return await callGenerateContent(apiKey, model, systemInstruction, input, maxOutputTokens, jsonMode);
+    } catch (e) {
+      lastError = e;
+      if (!isModelAvailabilityError(e)) throw e;
+    }
+  }
+  throw lastError || new Error("No Gemini model is available.");
+}
+
+async function callGenerateContent(apiKey: string, model: string, systemInstruction: string, input: string, maxOutputTokens: number, jsonMode: boolean) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 25000);
+  try {
+    const generationConfig: Record<string, unknown> = { temperature: jsonMode ? 0.2 : 0.35, maxOutputTokens };
+    if (jsonMode) generationConfig.responseMimeType = "application/json";
+
+    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
+      method: "POST",
+      headers: { "x-goog-api-key": apiKey, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: systemInstruction }] },
+        contents: [{ role: "user", parts: [{ text: input }] }],
+        generationConfig,
+      }),
+      signal: controller.signal,
+    });
+
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      const err: any = new Error(data?.error?.message || `Gemini API error (${r.status}).`);
+      err.status = r.status;
+      err.model = model;
+      throw err;
+    }
+
+    const text = data?.candidates?.[0]?.content?.parts?.map((p: any) => typeof p?.text === "string" ? p.text : "").filter(Boolean).join("\n") || "";
+    if (!text) {
+      const reason = data?.promptFeedback?.blockReason || data?.candidates?.[0]?.finishReason;
+      throw new Error(reason ? `Gemini returned no text (${reason}).` : "Gemini returned no text.");
+    }
+    return text;
+  } catch (e) {
+    if (e?.name === "AbortError") throw new Error("Gemini request timed out.");
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function isModelAvailabilityError(e: any) {
+  const msg = e?.message || "";
+  return e?.status === 404 || /no longer available|not available to new users|model.*not found|unsupported model/i.test(msg);
 }
 
 function parseJsonObject(text: string) {
   if (!text || typeof text !== "string") return null;
-  let s = text.trim();
-  s = s.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "");
+  let s = text.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "");
   const first = s.indexOf("{");
   const last = s.lastIndexOf("}");
   if (first < 0 || last <= first) return null;
@@ -198,26 +203,27 @@ function parseJsonObject(text: string) {
 function normalizeFeedback(v: any, language: string) {
   const list = (x: any) => Array.isArray(x) ? x.filter((y) => typeof y === "string" && y.trim()).slice(0, 5) : [];
   const str = (x: any) => typeof x === "string" ? x.slice(0, 4000) : "";
-  const score = Math.max(0, Math.min(100, Math.round(Number(v?.score) || 0)));
   return {
-    score,
+    score: Math.max(0, Math.min(100, Math.round(Number(v?.score) || 0))),
     verdict: str(v?.verdict) || (language === "en" ? "Case review" : "Revisão do caso"),
-    summary: str(v?.summary),
-    strengths: list(v?.strengths),
-    corrections: list(v?.corrections),
-    error_reasons: list(v?.error_reasons),
-    correct_reasoning: list(v?.correct_reasoning),
-    ideal_answer: str(v?.ideal_answer),
-    next_time: list(v?.next_time),
+    summary: str(v?.summary), strengths: list(v?.strengths), corrections: list(v?.corrections),
+    error_reasons: list(v?.error_reasons), correct_reasoning: list(v?.correct_reasoning),
+    ideal_answer: str(v?.ideal_answer), next_time: list(v?.next_time),
   };
 }
 
-function extractText(response: any) {
-  if (typeof response?.output_text === "string") return response.output_text;
-  const out = response?.output || [];
-  const chunks: string[] = [];
-  for (const item of out) for (const c of item?.content || []) if (c?.type === "output_text" && c?.text) chunks.push(c.text);
-  return chunks.join("\n");
+function friendlyError(e: any) {
+  const msg = e?.message || String(e || "Internal error.");
+  if (/quota|rate limit|resource exhausted|429/i.test(msg)) return "Limite gratuito da IA atingido. Tente novamente mais tarde.";
+  if (/api key|API_KEY_INVALID|permission/i.test(msg)) return "A chave da IA está inválida ou sem permissão.";
+  if (/timed out|timeout/i.test(msg)) return "A IA demorou mais que o esperado. Tente novamente.";
+  return msg;
+}
+
+function errorStatus(e: any) {
+  if (e?.status === 429 || /quota|rate limit|resource exhausted/i.test(e?.message || "")) return 429;
+  if (e?.status === 401 || e?.status === 403) return e.status;
+  return 500;
 }
 
 function json(body: unknown, status = 200) {

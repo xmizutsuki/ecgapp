@@ -9,6 +9,7 @@
   <script>try{if(localStorage.getItem('ecgLabLanguage'))document.documentElement.classList.add('language-selected')}catch(e){}</script>
   <link rel="stylesheet" href="styles.css" />
   <link rel="stylesheet" href="release_features.css" />
+  <link rel="stylesheet" href="performance_features.css" />
 </head>
 <body>
   <div id="languageGate" class="language-gate" aria-label="Language selection">
@@ -54,13 +55,14 @@
   <script src="english_content_finalize.js"></script>
   <script src="localize_data.js"></script>
 
-  <!-- Core app, feature overrides, deterministic bilingual cleanup and tutor. -->
+  <!-- Core app and feature layers. -->
   <script src="app.js"></script>
   <script src="study_casecoach_features.js"></script>
   <script src="training_features.js"></script>
   <script src="simulation_features.js"></script>
   <script src="simulation_zoom.js"></script>
   <script src="bilingual_ui_fixes.js"></script>
+  <script src="performance_features.js"></script>
   <script src="tutor_bilingual_fix.js"></script>
 </body>
 </html>

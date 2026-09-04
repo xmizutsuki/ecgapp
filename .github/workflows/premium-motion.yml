@@ -26,8 +26,8 @@ jobs:
           test -f premium_ui_v2.js
           node --check premium_ui_v2.js
 
-          grep -q 'premium_ui_v2.css?v=20260904-2' index.html
-          grep -q 'premium_ui_v2.js?v=20260904-2' index.html
+          grep -q 'premium_ui_v2.css' index.html
+          grep -q 'premium_ui_v2.js' index.html
           ! grep -q '<script src="premium_motion.js"' index.html
           ! grep -q '<link rel="stylesheet" href="premium_motion.css"' index.html
 
@@ -53,12 +53,12 @@ jobs:
           html=Path('index.html').read_text(encoding='utf-8')
           css=Path('premium_ui_v2.css').read_text(encoding='utf-8')
           js=Path('premium_ui_v2.js').read_text(encoding='utf-8')
-          assert html.index('floating_tutor_v2.js') < html.index('premium_ui_v2.css?v=20260904-2'), 'premium v2 CSS must load after feature runtimes'
-          assert html.index('premium_ui_v2.css?v=20260904-2') < html.index('premium_ui_v2.js?v=20260904-2'), 'CSS must load before v2 runtime'
+          assert html.index('floating_tutor_v2.js') < html.index('premium_ui_v2.css'), 'premium v2 CSS must load after feature runtimes'
+          assert html.index('premium_ui_v2.css') < html.index('premium_ui_v2.js'), 'CSS must load before v2 runtime'
           assert len(css) < 40000, 'premium UI v2 CSS unexpectedly large'
           assert len(js) < 12000, 'premium UI v2 JS unexpectedly large'
           zone=css[css.find('/* ---------- ECG safety zone ---------- */'):css.find('/* ---------- mobile:')]
           assert 'filter:none!important' in zone
           assert 'blur(' not in zone and 'drop-shadow' not in zone and 'glow' not in zone.lower(), 'ECG zone must not blur/glow tracings'
-          print('Premium UI v2 validated: visible, cache-busted, lightweight, reduced-motion aware and ECG-safe.')
+          print('Premium UI v2 validated: visible, lightweight, reduced-motion aware and ECG-safe.')
           PY

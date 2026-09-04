@@ -47,7 +47,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for f in index.html app.js styles.css release_features.css i18n.js english_content.js english_content_finalize.js localize_data.js bilingual_ui_fixes.js real_cases.js study_content.js study_casecoach_features.js simulation_features.js supabase/functions/ecg-tutor/index.ts; do
+          for f in index.html app.js styles.css release_features.css i18n.js english_content.js english_content_finalize.js localize_data.js bilingual_ui_fixes.js tutor_bilingual_fix.js real_cases.js study_content.js study_casecoach_features.js simulation_features.js supabase/functions/ecg-tutor/index.ts; do
             test -f "$f" || { echo "Missing required file: $f"; exit 1; }
           done
 
@@ -61,6 +61,7 @@ jobs:
           node --check english_content_finalize.js
           node --check localize_data.js
           node --check bilingual_ui_fixes.js
+          node --check tutor_bilingual_fix.js
           node --check real_cases.js
           node --check study_content.js
           node --check study_casecoach_features.js
@@ -70,8 +71,11 @@ jobs:
           grep -q "english_content.js" index.html
           grep -q "english_content_finalize.js" index.html
           grep -q "bilingual_ui_fixes.js" index.html
+          grep -q "tutor_bilingual_fix.js" index.html
           grep -q "touchDistance" app.js
           grep -q "touchAction='none'" app.js
+          grep -q "CardioTutor AI" tutor_bilingual_fix.js
+          grep -q "language:window.ECG_LANG" tutor_bilingual_fix.js
           ! grep -q "const wordMap=" i18n.js
 
           node - <<'NODE'

@@ -2,6 +2,21 @@ from pathlib import Path
 
 p=Path(__file__).resolve().parents[1]/'app.js'
 s=p.read_text(encoding='utf-8')
+
+# Keep the ECG trace at the same visual scale in portrait and landscape.
+# The previous mobile default (2.15x) made the vector stroke look much thicker
+# in portrait than in landscape, where the viewer used 1.25x.
+s=s.replace(
+    "function viewerBaseZoom(){return window.innerWidth<=720?2.15:1.25}",
+    "function viewerBaseZoom(){return 1.25}"
+)
+
+# Allow a slightly wider zoom-out range on narrow portrait screens.
+s=s.replace(
+    "const zoomBy=(delta)=>{v.zoom=clamp(Number((v.zoom+delta).toFixed(2)),1,8);applyViewerTransform()};",
+    "const zoomBy=(delta)=>{v.zoom=clamp(Number((v.zoom+delta).toFixed(2)),.75,8);applyViewerTransform()};"
+)
+
 old="""  wrap.ontouchstart=e=>{const t=e.touches[0];if(t)start(t.clientX,t.clientY)};
   wrap.ontouchmove=e=>{const t=e.touches[0];if(t){e.preventDefault();move(t.clientX,t.clientY)} };
   wrap.ontouchend=end;
@@ -29,7 +44,7 @@ new="""  // Touch controls: one finger pans; two fingers pinch to zoom and pan.
       const a=e.touches[0],b=e.touches[1],mid=touchMid(a,b);
       if(!pinch)pinch={distance:Math.max(1,touchDistance(a,b)),zoom:v.zoom,offsetX:v.offsetX,offsetY:v.offsetY,midX:mid.x,midY:mid.y};
       const ratio=touchDistance(a,b)/pinch.distance;
-      v.zoom=clamp(Number((pinch.zoom*ratio).toFixed(2)),1,8);
+      v.zoom=clamp(Number((pinch.zoom*ratio).toFixed(2)),.75,8);
       v.offsetX=pinch.offsetX+(mid.x-pinch.midX);
       v.offsetY=pinch.offsetY+(mid.y-pinch.midY);
       applyViewerTransform();
@@ -46,10 +61,17 @@ new="""  // Touch controls: one finger pans; two fingers pinch to zoom and pan.
 if new in s:
     print('Mobile pinch zoom already patched')
 elif old in s:
-    p.write_text(s.replace(old,new),encoding='utf-8')
+    s=s.replace(old,new)
     print('Added one-finger pan and two-finger pinch zoom')
 else:
-    raise SystemExit('Expected touch handler block not found in app.js')
+    # A prior build may already contain the touch patch with the old 1.0 minimum.
+    s=s.replace(
+        "v.zoom=clamp(Number((pinch.zoom*ratio).toFixed(2)),1,8);",
+        "v.zoom=clamp(Number((pinch.zoom*ratio).toFixed(2)),.75,8);"
+    )
+
+p.write_text(s,encoding='utf-8')
+print('Normalized ECG viewer scale to 1.25x across portrait and landscape')
 
 # The same build-preparation step also applies the practice-exam end-of-session behavior.
 # Importing the patch module executes its idempotent source transformation.

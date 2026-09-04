@@ -1,84 +1,227 @@
-/* ECG Lab — iOS-inspired typography refinement.
-   Uses native Apple system fonts when available and safe system fallbacks elsewhere. */
+/* ECG Lab — Inter typography system.
+   Inter for UI/body and Inter Tight for display headings.
+   Responsive scale follows the ECG Lab typography specification. */
 :root{
-  --ui-font-text:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display","Helvetica Neue","Segoe UI",system-ui,Arial,sans-serif;
-  --ui-font-display:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text","Helvetica Neue","Segoe UI",system-ui,Arial,sans-serif;
+  --font-body:"Inter",system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  --font-heading:"Inter Tight","Inter",system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+
+  --text-h1:44px;
+  --text-page-title:32px;
+  --text-h2:22px;
+  --text-stat:34px;
+  --text-body:16px;
+  --text-label:13px;
+  --text-nav:15px;
+
+  /* Three visual weights across the interface. */
+  --fw-regular:400;
+  --fw-semibold:600;
+  --fw-extrabold:800;
+
+  --lh-tight:1.15;
+  --lh-heading:1.3;
+  --lh-body:1.55;
 }
 
-html,body,button,input,textarea,select{font-family:var(--ui-font-text)!important}
+html,body,button,input,textarea,select{
+  font-family:var(--font-body)!important;
+}
 body{
+  font-size:var(--text-body);
+  line-height:var(--lh-body);
+  font-weight:var(--fw-regular);
   -webkit-font-smoothing:antialiased;
   -moz-osx-font-smoothing:grayscale;
   text-rendering:optimizeLegibility;
-  font-feature-settings:"kern" 1,"liga" 1,"calt" 1;
-  letter-spacing:-.005em;
+  font-feature-settings:"cv11" 1,"ss01" 1,"kern" 1,"liga" 1,"calt" 1;
+  font-synthesis:none;
+  letter-spacing:0;
 }
 
-/* iOS-like display hierarchy: tighter, cleaner, more confident. */
-h1,h2,h3,.hero h2,.topbar h1,.brand strong,.perf-mastery-score strong,.cat-result-score strong,.sim-result strong{
-  font-family:var(--ui-font-display)!important;
-  letter-spacing:-.035em!important;
-  font-weight:750;
+/* Display hierarchy */
+h1,.topbar h1,.hero h2,.language-card h1{
+  font-family:var(--font-heading)!important;
+  font-weight:var(--fw-extrabold)!important;
+  line-height:var(--lh-tight)!important;
+  letter-spacing:-.025em!important;
 }
-h4,h5,h6,.card strong,.stat strong,.list-item strong,.module strong,.sim-card strong{
-  letter-spacing:-.02em;
-  font-weight:700;
+h2,h3,h4,h5,h6,.section-head h3,.card h3,.question h2{
+  font-family:var(--font-heading)!important;
+  font-weight:var(--fw-semibold)!important;
+  line-height:var(--lh-heading);
+  letter-spacing:-.015em!important;
 }
 
-body.ui-v2 .topbar h1{font-size:30px!important;line-height:1.08!important}
-body.ui-v2 .hero h2{font-size:44px!important;line-height:1.02!important;max-width:820px}
-body.ui-v2 .section-head h3,body.ui-v2 .card h3{letter-spacing:-.025em}
-body.ui-v2 .question h2{letter-spacing:-.028em!important;line-height:1.16!important}
-body.ui-v2 .stat strong{font-size:30px!important;letter-spacing:-.04em!important}
-body.ui-v2 .brand strong{letter-spacing:-.025em!important}
-
-/* Controls resemble iOS labels: semibold, compact and highly legible. */
-body.ui-v2 .btn,
-body.ui-v2 .chip,
-body.ui-v2 .answer,
-body.ui-v2 .nav button,
-body.ui-v2 .mobile-nav button,
-body.ui-v2 .auth-tabs button,
-body.ui-v2 .ft2-fab,
-body.ui-v2 .ft2-action{
-  font-family:var(--ui-font-text)!important;
-  font-weight:650!important;
-  letter-spacing:-.012em!important;
+/* Page title + hero */
+body.ui-v2 .topbar h1{
+  font-size:var(--text-page-title)!important;
+  line-height:var(--lh-tight)!important;
 }
-body.ui-v2 .answer{font-size:15px;line-height:1.35}
-body.ui-v2 .btn{font-size:14px}
-body.ui-v2 .chip{font-size:12px}
+body.ui-v2 .hero h2{
+  font-size:var(--text-h1)!important;
+  line-height:var(--lh-tight)!important;
+  max-width:820px;
+}
+body.ui-v2 .section-head h3,
+body.ui-v2 .card h3{
+  font-size:var(--text-h2);
+}
+body.ui-v2 .question h2{
+  font-size:var(--text-h2)!important;
+  line-height:1.28!important;
+}
 
-/* Body copy gets softer Apple-like rhythm without becoming oversized. */
+/* Body copy */
 body.ui-v2 p,
 body.ui-v2 li,
 body.ui-v2 .muted,
 body.ui-v2 .viewer-help,
-body.ui-v2 .msg,
-body.ui-v2 label{
-  letter-spacing:-.006em;
-  line-height:1.55;
-}
-body.ui-v2 .eyebrow,
-body.ui-v2 .badge,
-body.ui-v2 small{
-  letter-spacing:.01em;
+body.ui-v2 .msg{
+  font-family:var(--font-body)!important;
+  font-size:var(--text-body);
+  font-weight:var(--fw-regular);
+  line-height:var(--lh-body);
+  letter-spacing:0;
 }
 
-/* Numeric interfaces use tabular figures so timers/scores don't jump. */
-body.ui-v2 .zoom-indicator,
+/* Buttons + interactive controls */
+body.ui-v2 .btn,
+body.ui-v2 .chip,
+body.ui-v2 .answer,
+body.ui-v2 .auth-tabs button,
+body.ui-v2 .ft2-fab,
+body.ui-v2 .ft2-action{
+  font-family:var(--font-body)!important;
+  font-size:14px!important;
+  font-weight:var(--fw-semibold)!important;
+  letter-spacing:0!important;
+}
+
+/* Sidebar/navigation */
+body.ui-v2 .nav button{
+  font-family:var(--font-body)!important;
+  font-size:var(--text-nav)!important;
+  font-weight:var(--fw-semibold)!important;
+  letter-spacing:0!important;
+}
+body.ui-v2 .mobile-nav button{
+  font-family:var(--font-body)!important;
+  font-weight:var(--fw-semibold)!important;
+  letter-spacing:0!important;
+}
+
+/* Labels and small metadata */
+body.ui-v2 label,
+body.ui-v2 .stat .label,
+body.ui-v2 .stat>span,
+body.ui-v2 .perf-area span,
+body.ui-v2 .perf-activity-grid span,
+body.ui-v2 .cat-stat span,
+body.ui-v2 .sim-stat span{
+  font-family:var(--font-body)!important;
+  font-size:var(--text-label)!important;
+  font-weight:var(--fw-semibold)!important;
+  line-height:1.4;
+  letter-spacing:0!important;
+}
+body.ui-v2 .eyebrow,
+body.ui-v2 .badge{
+  font-family:var(--font-body)!important;
+  font-size:12px;
+  font-weight:var(--fw-semibold)!important;
+  line-height:1.4;
+  letter-spacing:.03em!important;
+  text-transform:uppercase;
+}
+body.ui-v2 small{
+  font-family:var(--font-body)!important;
+  font-weight:var(--fw-regular);
+  letter-spacing:0;
+}
+
+/* Dashboard stats */
 body.ui-v2 .stat strong,
-body.ui-v2 .perf-mastery-score strong,
+body.ui-v2 .perf-mastery-score>strong,
+body.ui-v2 .cat-result-score strong,
+body.ui-v2 .sim-result strong{
+  font-family:var(--font-body)!important;
+  font-size:var(--text-stat)!important;
+  font-weight:var(--fw-extrabold)!important;
+  line-height:1.1!important;
+  letter-spacing:-.025em!important;
+}
+
+/* Continue studying / list content */
+body.ui-v2 .list-item h4,
+body.ui-v2 .list-item strong{
+  font-family:var(--font-body)!important;
+  font-size:16px;
+  font-weight:var(--fw-semibold)!important;
+  line-height:1.35;
+  letter-spacing:0!important;
+}
+body.ui-v2 .list-item p,
+body.ui-v2 .list-item small{
+  font-family:var(--font-body)!important;
+  font-size:13px;
+  font-weight:var(--fw-regular)!important;
+  line-height:1.45;
+}
+
+/* Skill map / My Performance */
+body.ui-v2 .skill,
+body.ui-v2 .perf-skill-row strong{
+  font-family:var(--font-body)!important;
+  font-size:14px!important;
+  font-weight:var(--fw-semibold)!important;
+  letter-spacing:0!important;
+}
+body.ui-v2 .perf-skill-row>b,
+body.ui-v2 .skill>b,
+body.ui-v2 .perf-area strong{
+  font-family:var(--font-body)!important;
+  font-size:14px;
+  font-weight:var(--fw-semibold)!important;
+}
+
+/* Tabular numbers: scores, percentages, timers, XP and changing counters. */
+body.ui-v2 .stat strong,
+body.ui-v2 .badge,
+body.ui-v2 .zoom-indicator,
+body.ui-v2 .perf-mastery-score>strong,
+body.ui-v2 .perf-skill-row>b,
+body.ui-v2 .perf-area strong,
+body.ui-v2 .perf-xp>strong,
+body.ui-v2 .perf-xp small,
 body.ui-v2 .cat-result-score strong,
 body.ui-v2 .sim-result strong,
 body.ui-v2 [class*="timer"],
-body.ui-v2 [class*="score"]{
-  font-variant-numeric:tabular-nums;
+body.ui-v2 [class*="score"],
+body.ui-v2 [class*="percent"],
+body.ui-v2 [class*="accuracy"]{
+  font-variant-numeric:tabular-nums lining-nums;
+  font-feature-settings:"tnum" 1,"lnum" 1;
 }
 
-@media(max-width:720px){
-  body.ui-v2 .topbar h1{font-size:26px!important}
-  body.ui-v2 .hero h2{font-size:34px!important;line-height:1.04!important}
-  body.ui-v2 .question h2{font-size:21px!important}
-  body.ui-v2 .mobile-nav button{font-size:11px!important;font-weight:650!important}
+@media(max-width:768px){
+  :root{
+    --text-h1:30px;
+    --text-page-title:24px;
+    --text-h2:19px;
+    --text-stat:29px;
+    --text-body:14px;
+    --text-label:12px;
+  }
+  body.ui-v2 .hero h2{font-size:var(--text-h1)!important}
+  body.ui-v2 .topbar h1{font-size:var(--text-page-title)!important}
+  body.ui-v2 .question h2{font-size:var(--text-h2)!important}
+  body.ui-v2 .list-item h4,
+  body.ui-v2 .list-item strong{font-size:15px}
+  body.ui-v2 .list-item p,
+  body.ui-v2 .list-item small{font-size:13px}
+  body.ui-v2 .skill,
+  body.ui-v2 .perf-skill-row strong,
+  body.ui-v2 .perf-skill-row>b,
+  body.ui-v2 .skill>b{font-size:14px!important}
+  body.ui-v2 .mobile-nav button{font-size:11px!important}
 }

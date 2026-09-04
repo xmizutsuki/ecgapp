@@ -1,0 +1,15 @@
+/* ECG Lab — authentication modal spacing hotfix */
+#authModal .auth-modal #authForm{
+  margin:0 0 16px!important;
+}
+#authModal .auth-modal #authForm + #demoLogin{
+  display:block!important;
+  margin-top:0!important;
+}
+#authModal .auth-modal #authNote{
+  margin:16px 0 0!important;
+}
+@media(max-width:720px){
+  #authModal .auth-modal #authForm{margin-bottom:18px!important;}
+  #authModal .auth-modal #authNote{margin-top:18px!important;}
+}

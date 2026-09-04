@@ -31,11 +31,13 @@ jobs:
       - name: Install build dependencies
         run: python -m pip install --disable-pip-version-check --no-cache-dir reportlab cairosvg pypdf
 
-      - name: Prepare bilingual and mobile runtime
+      - name: Prepare bilingual and interactive runtime
         run: |
           python scripts/patch_i18n.py
           python scripts/patch_app_language.py
           python scripts/patch_mobile_zoom.py
+          python scripts/patch_simulation_autofinish.py
+          python scripts/patch_training_performance_focus.py
 
       - name: Generate ECG vector library
         run: python scripts/generate_ecg_svgs.py
@@ -47,7 +49,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for f in index.html app.js styles.css release_features.css i18n.js english_content.js english_content_finalize.js localize_data.js bilingual_ui_fixes.js tutor_bilingual_fix.js real_cases.js study_content.js study_casecoach_features.js training_features.js simulation_features.js simulation_zoom.js supabase/training_suite.sql supabase/simulation_suite.sql supabase/functions/ecg-tutor/index.ts; do
+          for f in index.html app.js styles.css release_features.css performance_features.css i18n.js english_content.js english_content_finalize.js localize_data.js bilingual_ui_fixes.js tutor_bilingual_fix.js real_cases.js study_content.js study_casecoach_features.js training_features.js simulation_features.js simulation_zoom.js performance_features.js supabase/training_suite.sql supabase/simulation_suite.sql supabase/performance_suite.sql supabase/functions/ecg-tutor/index.ts supabase/functions/performance-insight/index.ts scripts/patch_simulation_autofinish.py scripts/patch_training_performance_focus.py; do
             test -f "$f" || { echo "Missing required file: $f"; exit 1; }
           done
 
@@ -68,7 +70,8 @@ jobs:
           node --check training_features.js
           node --check simulation_features.js
           node --check simulation_zoom.js
-          python -m py_compile scripts/generate_ecg_svgs.py scripts/generate_lesson_pdfs.py scripts/patch_i18n.py scripts/patch_app_language.py scripts/patch_mobile_zoom.py
+          node --check performance_features.js
+          python -m py_compile scripts/generate_ecg_svgs.py scripts/generate_lesson_pdfs.py scripts/patch_i18n.py scripts/patch_app_language.py scripts/patch_mobile_zoom.py scripts/patch_simulation_autofinish.py scripts/patch_training_performance_focus.py
 
           grep -q "english_content.js" index.html
           grep -q "english_content_finalize.js" index.html
@@ -76,6 +79,8 @@ jobs:
           grep -q "tutor_bilingual_fix.js" index.html
           grep -q "training_features.js" index.html
           grep -q "simulation_zoom.js" index.html
+          grep -q "performance_features.js" index.html
+          grep -q "performance_features.css" index.html
           grep -q "touchDistance" app.js
           grep -q "touchAction='none'" app.js
           grep -q "CardioTutor AI" tutor_bilingual_fix.js
@@ -98,11 +103,13 @@ jobs:
           grep -q "CAT progression" training_features.js
           grep -q "Evolução do CAT" training_features.js
           grep -q "hiddenDifficulty" training_features.js
+          grep -q "performanceFocusWeights" training_features.js
+          grep -q "ecgLabTrainingFocus:v1" training_features.js
           ! grep -q "CAT • dificuldade" training_features.js
           ! grep -q "CAT • difficulty" training_features.js
           grep -q "total_questions between 20 and 80" supabase/training_suite.sql
 
-          # Practice exam suite: bilingual labels, local-first persistence, cloud sync, ECG beside question, review and charts.
+          # Practice exam suite: persistence, review, ECG viewer, and automatic completion on the last answer.
           grep -q "Histórico de Simulados" simulation_features.js
           grep -q "Practice Exam History" simulation_features.js
           grep -q "Evolução nos Simulados" simulation_features.js
@@ -113,9 +120,11 @@ jobs:
           grep -q "caseById" simulation_features.js
           grep -q "Revisar questões" simulation_features.js
           grep -q "Review questions" simulation_features.js
+          grep -q "isLastQuestion=session.current_question_index===session.total_questions-1" simulation_features.js
+          grep -q "if(isLastQuestion){finalizeSession(session);return}" simulation_features.js
           ! grep -qiE 'pontos fortes|pontos fracos|precisa revisar|strengths|weaknesses|study recommendation' simulation_features.js
 
-          # Practice exam ECG viewer must mirror Training interactions on mouse and touch.
+          # Practice exam ECG viewer mirrors Training interactions on mouse and touch.
           grep -q "addEventListener('wheel'" simulation_zoom.js
           grep -q "addEventListener('mousedown'" simulation_zoom.js
           grep -q "addEventListener('dblclick'" simulation_zoom.js
@@ -125,6 +134,36 @@ jobs:
           grep -q "requestFullscreen" simulation_zoom.js
           grep -q "MAX_ZOOM=8" simulation_zoom.js
           grep -q "sim-review-ecg" simulation_zoom.js
+
+          # Meu Desempenho / My Performance.
+          grep -q "Meu Desempenho" performance_features.js
+          grep -q "My Performance" performance_features.js
+          grep -q "ECG Mastery Score" performance_features.js
+          grep -q "activity_type:'quick_training'" performance_features.js
+          grep -q "activity_type:'simulation'" performance_features.js
+          grep -q "activity_type:'clinical_case'" performance_features.js
+          grep -q "\.30\*c.simulation" performance_features.js
+          grep -q "\.25\*c.quick" performance_features.js
+          grep -q "\.30\*c.clinical" performance_features.js
+          grep -q "\.15\*p.score" performance_features.js
+          grep -q "g.errors>=3" performance_features.js
+          grep -q "TREINAR MINHAS ÁREAS DE MAIOR DIFICULDADE" performance_features.js
+          grep -q "TRAIN MY HIGH-PRIORITY AREAS" performance_features.js
+          grep -q "learning_events" performance_features.js
+          grep -q "user_performance" performance_features.js
+          grep -q "competency_performance" performance_features.js
+          grep -q "performance_snapshots" performance_features.js
+          grep -q "user_xp" performance_features.js
+          grep -q "ai_performance_insights" performance_features.js
+          grep -q "learning_events" supabase/performance_suite.sql
+          grep -q "user_performance" supabase/performance_suite.sql
+          grep -q "competency_performance" supabase/performance_suite.sql
+          grep -q "performance_snapshots" supabase/performance_suite.sql
+          grep -q "user_xp" supabase/performance_suite.sql
+          grep -q "ai_performance_insights" supabase/performance_suite.sql
+          grep -q "auth.uid()" supabase/performance_suite.sql
+          grep -q "Do not recalculate" supabase/functions/performance-insight/index.ts
+          grep -q "Não recalcule" supabase/functions/performance-insight/index.ts
 
           node - <<'NODE'
           const fs=require('fs'),vm=require('vm');
@@ -171,24 +210,24 @@ jobs:
 
           class Scripts(HTMLParser):
               def __init__(self):
-                  super().__init__(); self.srcs=[]
+                  super().__init__(); self.srcs=[]; self.links=[]
               def handle_starttag(self, tag, attrs):
-                  if tag == 'script':
-                      d=dict(attrs)
-                      if d.get('src'): self.srcs.append(d['src'])
+                  d=dict(attrs)
+                  if tag == 'script' and d.get('src'): self.srcs.append(d['src'])
+                  if tag == 'link' and d.get('href') and d.get('rel') == 'stylesheet': self.links.append(d['href'])
 
           p=Scripts(); p.feed(Path('index.html').read_text(encoding='utf-8'))
-          missing=[s for s in p.srcs if not s.startswith(('http://','https://')) and not Path(s).is_file()]
-          if missing: raise SystemExit(f'Missing script references: {missing}')
+          missing=[s for s in p.srcs+p.links if not s.startswith(('http://','https://')) and not Path(s).is_file()]
+          if missing: raise SystemExit(f'Missing static references: {missing}')
 
           for lang in ('pt','en'):
               files=sorted((Path('assets/lessons')/lang).glob('*.pdf'))
               bad=[str(f) for f in files if len(PdfReader(str(f)).pages) != 6]
               if bad: raise SystemExit(f'Lesson PDFs must have 6 pages: {bad}')
-          print('Static references and 42 six-page PDFs validated.')
+          print('Static references, My Performance assets, and 42 six-page PDFs validated.')
           PY
 
-          ! grep -RniE 'registro clínico real|ECG real de paciente|real patient ECG' index.html app.js study_casecoach_features.js training_features.js README.md DATA_SOURCES.md || {
+          ! grep -RniE 'registro clínico real|ECG real de paciente|real patient ECG' index.html app.js study_casecoach_features.js training_features.js performance_features.js README.md DATA_SOURCES.md || {
             echo 'Found wording that may incorrectly imply the synthetic training tracings are real patient ECGs.'
             exit 1
           }

@@ -31,10 +31,11 @@ jobs:
       - name: Install build dependencies
         run: python -m pip install --disable-pip-version-check --no-cache-dir reportlab cairosvg pypdf
 
-      - name: Harden bilingual runtime
+      - name: Prepare bilingual and mobile runtime
         run: |
           python scripts/patch_i18n.py
           python scripts/patch_app_language.py
+          python scripts/patch_mobile_zoom.py
 
       - name: Generate ECG vector library
         run: python scripts/generate_ecg_svgs.py
@@ -46,7 +47,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for f in index.html app.js styles.css release_features.css i18n.js localize_data.js real_cases.js study_content.js study_casecoach_features.js simulation_features.js supabase/functions/ecg-tutor/index.ts; do
+          for f in index.html app.js styles.css release_features.css i18n.js english_content.js localize_data.js real_cases.js study_content.js study_casecoach_features.js simulation_features.js supabase/functions/ecg-tutor/index.ts; do
             test -f "$f" || { echo "Missing required file: $f"; exit 1; }
           done
 
@@ -56,12 +57,37 @@ jobs:
 
           node --check app.js
           node --check i18n.js
+          node --check english_content.js
           node --check localize_data.js
           node --check real_cases.js
           node --check study_content.js
           node --check study_casecoach_features.js
           node --check simulation_features.js
-          python -m py_compile scripts/generate_ecg_svgs.py scripts/generate_lesson_pdfs.py scripts/patch_i18n.py scripts/patch_app_language.py
+          python -m py_compile scripts/generate_ecg_svgs.py scripts/generate_lesson_pdfs.py scripts/patch_i18n.py scripts/patch_app_language.py scripts/patch_mobile_zoom.py
+
+          grep -q "english_content.js" index.html
+          grep -q "touchDistance" app.js
+          grep -q "touchAction='none'" app.js
+          ! grep -q "const wordMap=" i18n.js
+
+          node - <<'NODE'
+          const fs=require('fs'),vm=require('vm');
+          const sandbox={window:{}};vm.createContext(sandbox);
+          for(const f of ['study_content.js','real_cases.js','english_content.js']) vm.runInContext(fs.readFileSync(f,'utf8'),sandbox);
+          const study=sandbox.window.ECG_STUDY_CONTENT_EN;
+          if(!study) throw new Error('Curated English study content was not created');
+          const lessonCount=Object.keys(study.lessons||{}).length;
+          const caseCount=Object.values(study.lessons||{}).reduce((n,l)=>n+(l.cases||[]).length,0);
+          if(lessonCount!==21) throw new Error(`Expected 21 English lessons, got ${lessonCount}`);
+          if(caseCount!==190) throw new Error(`Expected 190 English study cases, got ${caseCount}`);
+          sandbox.window.ECG_REAL_LIBRARY_EN.load().then(lib=>{
+            if(lib.cases.length!==114||lib.questions.length!==114||lib.categories.length!==19) throw new Error('English ECG question library counts are incorrect');
+            const text=JSON.stringify({study,lib});
+            const bad=/[ãõáàâéêíóôúç]|\b(ritmo|onda|paciente|pegadinha|traçado|sinusal|fibrilação|taquicardia|bloqueio|tontura|síncope|medicações|avaliação|exame físico|imagem|laboratório)\b/i.exec(text);
+            if(bad) throw new Error(`Portuguese residue detected in curated English content: ${bad[0]}`);
+            console.log('Curated English content validated: 21 lessons, 190 cases, 114 ECG questions.');
+          }).catch(e=>{console.error(e);process.exit(1)});
+          NODE
 
           python - <<'PY'
           from pathlib import Path

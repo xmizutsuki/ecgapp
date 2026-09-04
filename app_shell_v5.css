@@ -12,8 +12,8 @@
     height:auto!important;
     overflow-x:hidden!important;
     overflow-y:auto!important;
-    scrollbar-width:thin;
-    scrollbar-color:#0b1c2f #06111e;
+    scrollbar-width:none;
+    scrollbar-color:auto;
   }
 
   body{
@@ -23,23 +23,14 @@
     overflow:visible!important;
   }
 
-  /* Near-invisible viewport scrollbar. It intentionally uses the same navy family
-     as the page and removes native arrow buttons so it does not read as a divider. */
-  html::-webkit-scrollbar{width:8px;height:8px}
-  html::-webkit-scrollbar-track{background:#06111e}
-  html::-webkit-scrollbar-button{display:none;width:0;height:0}
-  html::-webkit-scrollbar-corner{background:#06111e}
-  html::-webkit-scrollbar-thumb{
-    min-height:48px;
-    background:#0b1c2f;
-    border-radius:999px;
-    border:2px solid transparent;
-    background-clip:padding-box;
-  }
-  html::-webkit-scrollbar-thumb:hover{
-    background:#10273e;
-    background-clip:padding-box;
-  }
+  /* Keep document scrolling, but hide the native scrollbar chrome completely.
+     This avoids the bright Windows scrollbar gutter while preserving mouse wheel,
+     trackpad, PageUp/PageDown and keyboard scrolling. */
+  html::-webkit-scrollbar{width:0!important;height:0!important;display:none!important}
+  html::-webkit-scrollbar-track,
+  html::-webkit-scrollbar-thumb,
+  html::-webkit-scrollbar-button,
+  html::-webkit-scrollbar-corner{display:none!important;width:0!important;height:0!important;background:transparent!important}
 
   #app{
     width:100%;

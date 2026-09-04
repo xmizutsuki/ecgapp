@@ -1,135 +1,150 @@
-# ECG Lab — Plataforma Web de Treinamento em ECG
+# ECG Lab — Beta 1.0
 
 Aplicação web educacional bilíngue (Português / English) para treino estruturado de interpretação eletrocardiográfica.
 
-## O que esta versão entrega
+> **Versão:** `1.0.0-beta.1`  
+> **Produção:** https://xmizutsuki.github.io/ecgapp/
 
-- **114 traçados educacionais em SVG vetorial**;
-- **19 temas de ritmo**, com **6 variações por tema**;
-- Lead II longo de 10 segundos para treino de reconhecimento de ritmo;
-- visualizador responsivo com zoom de até 8×, arraste e tela cheia;
-- treinamento adaptativo por desempenho;
-- trilha com **21 aulas** e **190 casos clínicos fictícios**;
-- CaseCoach com resposta em texto, ditado por voz do navegador e correção pedagógica por IA quando o backend está configurado;
-- simulados personalizados entre **20 e 80 questões**;
-- **42 PDFs de 6 páginas** gerados no build: 21 em português + 21 em inglês;
-- modo demonstração sem Supabase;
-- GitHub Actions com validação em pull requests e publicação automática no GitHub Pages após merge em `main`.
+## Escopo da Beta 1.0
 
-## ECGs vetoriais
+A Beta 1.0 é focada na experiência do estudante. O conteúdo educacional curado permanece empacotado no frontend e é reconstruído/validado no pipeline de publicação; o Supabase é usado para autenticação, sincronização do progresso, persistência das sessões, feedback beta e funções de IA.
 
-O problema de perda de resolução foi eliminado na origem. Os traçados não são PNGs ampliados: são reconstruídos do zero como SVGs e permanecem nítidos em celular, tablet, notebook, monitores de alta resolução, zoom e tela cheia.
+Principais recursos:
 
-A biblioteca é gerada deterministicamente por:
+- **114 traçados educacionais vetoriais** em 19 categorias, com 6 variações por categoria;
+- treino adaptativo CAT de **20 a 80 questões**, com salvamento e retomada;
+- simulados de **20 a 80 questões**, histórico, resultado e revisão;
+- **21 aulas** e **190 estudos de caso fictícios**;
+- **42 PDFs** de 6 páginas: 21 em português + 21 em inglês;
+- Meu Desempenho consolidando treino, simulados e estudos de caso;
+- CardioTutor flutuante com contexto da tela e proteção contra entrega da resposta antes da tentativa;
+- CaseCoach com texto/ditado e feedback educacional por IA;
+- análise de desempenho por IA usando apenas agregados calculados pelo aplicativo;
+- modo demonstração local;
+- feedback do beta com metadados técnicos não sensíveis;
+- layout responsivo para desktop, tablet e mobile.
+
+## Aviso educacional
+
+Os traçados e casos são reconstruções/simulações para ensino. Não representam ECGs ou pacientes reais e não substituem avaliação clínica, laudo profissional, protocolos institucionais ou julgamento clínico.
+
+## Conteúdo e ECGs vetoriais
+
+Os traçados não são PNGs ampliados. Eles são gerados como SVG pelo script:
 
 ```text
 scripts/generate_ecg_svgs.py
 ```
 
-Durante o build são criados:
+O build cria:
 
 ```text
 assets/ecg/<ritmo>/<ritmo>_01.svg ... <ritmo>_06.svg
 ```
 
-Os arquivos gerados não precisam ser versionados individualmente no GitHub; o workflow os recria antes da validação e do deploy.
+O pipeline valida quantidade, XML, conteúdo ativo proibido e integridade da biblioteca. As fontes, limitações e critérios estão documentados em `DATA_SOURCES.md` e `ECG_LIBRARY_MANIFEST.md`.
 
-Os temas, fontes e limitações estão documentados em `DATA_SOURCES.md` e `ECG_LIBRARY_MANIFEST.md`.
+## Trilha de estudos e PDFs
 
-## Trilha de estudos
-
-Todos os módulos ficam liberados desde o primeiro acesso. A trilha contém:
-
-- 21 aulas, do método básico de leitura a isquemia/ST-T;
-- 190 estudos de caso fictícios;
-- anamnese, sinais vitais, exame físico, laboratório, imagem/outros exames e ECG educacional;
-- pergunta de raciocínio antes da resposta comentada;
-- pegadinhas leves e pontos de aprendizagem;
-- links para vídeos externos no canal original, sem copiar ou redistribuir os vídeos;
-- referências para aprofundamento.
-
-A aula de isquemia deixa explícito que localização de isquemia, eixo, bloqueios de ramo e vários diagnósticos morfológicos exigem ECG de 12 derivações; Lead II isolada é usada principalmente para treino de ritmo.
-
-## PDFs aprofundados
-
-Cada aula possui um guia PDF de 6 páginas em português e em inglês. Os PDFs são gerados por:
+A trilha contém 21 aulas e 190 casos clínicos fictícios. Cada aula possui um PDF aprofundado em português e outro em inglês, gerados por:
 
 ```text
 scripts/generate_lesson_pdfs.py
 ```
 
-O workflow produz:
-
-```text
-assets/lessons/pt/*.pdf
-assets/lessons/en/*.pdf
-```
-
-Cada guia inclui visão geral, fisiologia, critérios de reconhecimento, um traçado vetorial quando aplicável, diagnósticos diferenciais, raciocínio clínico, armadilhas, autoavaliação e referências.
-
-A referência fisiológica principal é **Guyton and Hall Textbook of Medical Physiology, 15th ed.**. Diretrizes específicas complementam o conteúdo, incluindo AF 2023, SVT 2015, bradicardia/condução 2018, arritmias ventriculares 2017 e síndrome coronariana aguda 2025. Nenhuma figura do tratado é reproduzida; os traçados usados nos PDFs são reconstruções do próprio ECG Lab.
+O build exige 21 PDFs por idioma e 6 páginas por arquivo. A referência fisiológica principal é **Guyton and Hall Textbook of Medical Physiology, 15th ed.**; diretrizes específicas complementam os temas. Nenhuma figura protegida do tratado é reproduzida.
 
 ## Português / English
 
-Na primeira abertura, o usuário escolhe **Português (Brasil)** ou **English**. A preferência é salva localmente.
+Na primeira abertura, o usuário escolhe Português (Brasil) ou English. A preferência fica salva localmente. A interface e o conteúdo dinâmico usam `i18n.js`, `english_content.js`, `english_content_finalize.js` e `localize_data.js`, com validação bilíngue no CI.
 
-A interface e o conteúdo dinâmico usam `i18n.js` + `localize_data.js`. Antes de publicar, o build executa `scripts/patch_i18n.py`, que torna a substituição de termos sensível a limites de palavras e evita corrupção de substrings por traduções curtas. O payload do CardioTutor também recebe o idioma selecionado.
+## Treino CAT
 
-Títulos originais de vídeos e URLs externos permanecem associados às fontes originais.
-
-## CaseCoach — texto, voz e IA
-
-Nos estudos de caso, o estudante pode explicar o raciocínio antes de revelar a análise.
-
-- resposta digitada;
-- ditado com `SpeechRecognition` / `webkitSpeechRecognition` quando suportado pelo navegador;
-- envio do **texto transcrito**, não do áudio, ao backend do ECG Lab;
-- nota de 0–100;
-- pontos corretos;
-- correções;
-- possíveis motivos do erro;
-- raciocínio correto passo a passo;
-- resposta-modelo;
-- o que observar na próxima tentativa.
-
-Sem backend, o aplicativo mostra um feedback local de referência claramente identificado como não-IA.
-
-A Edge Function `supabase/functions/ecg-tutor/index.ts` suporta dois modos:
+O treino adaptativo permite selecionar entre 20 e 80 questões. A sessão mantém estado local e, para usuários autenticados, sincroniza com:
 
 ```text
-tutor
-case-feedback
+training_sessions
+training_session_answers
 ```
 
-O modelo padrão configurado na função é:
+Sair da aba não deve apagar uma sessão em andamento. O histórico permite continuar posteriormente.
+
+## Simulados
+
+Os simulados também usam 20 a 80 questões e persistem em:
 
 ```text
-gpt-5.6-luna
+simulations
+simulation_answers
 ```
 
-Ele pode ser substituído pelo secret/variável `OPENAI_MODEL` no ambiente Supabase.
+O usuário pode interromper, continuar, finalizar e revisar o resultado.
 
-## Supabase e segurança
+## Meu Desempenho
 
-O Supabase é opcional no modo demonstração. Para login real, persistência e correção por IA:
+As métricas objetivas são calculadas deterministicamente pelo aplicativo e persistidas em tabelas como:
 
-1. configure `SUPABASE_URL` e a publishable/anon key em `config.js`;
-2. aplique `supabase/schema.sql` e `supabase/seed.sql`;
-3. defina `OPENAI_API_KEY` **somente nos secrets do Supabase**;
-4. opcionalmente defina `OPENAI_MODEL`;
-5. publique a função:
-
-```bash
-supabase functions deploy ecg-tutor
+```text
+learning_events
+user_performance
+performance_snapshots
+competency_performance
 ```
 
-Nunca publique `OPENAI_API_KEY`, `service_role`, senha de banco ou outra chave privada no repositório ou no JavaScript do navegador.
+A IA **não recalcula nem altera** percentuais, Mastery Score, XP ou tendências. A Edge Function `performance-insight` recebe somente agregados estruturados e devolve interpretação/recomendações educacionais.
 
-## Simulados personalizados
+## CardioTutor e CaseCoach
 
-A aba **Simulados** permite selecionar entre 20 e 80 questões. As questões são embaralhadas em cada tentativa, o progresso é mostrado durante o simulado e o resultado aparece ao final.
+A Edge Function `ecg-tutor` atende os modos de tutor contextual e correção de caso. Ela exige sessão autenticada e protege perguntas não respondidas, removendo resposta correta/explicação do contexto antes da tentativa.
 
-## Rodar localmente como a versão de produção
+Os textos enviados são educacionais. No ditado, o navegador converte voz em texto; o áudio não é enviado pelo ECG Lab.
+
+## Supabase de produção
+
+Projeto utilizado pela Beta 1.0:
+
+```text
+jkvalsckcqzwnbginmow
+```
+
+O frontend contém somente a **publishable key**, apropriada para uso público no navegador. Chaves de serviço, segredos de IA e credenciais privadas ficam fora do frontend.
+
+A produção possui RLS habilitado nas tabelas públicas e políticas de propriedade por `auth.uid()` para dados do usuário. As funções de IA usam JWT obrigatório.
+
+### Importante sobre `supabase/schema.sql`
+
+`supabase/schema.sql` é um **documento legado de bootstrap** de uma fase anterior do projeto e não deve ser executado sobre o banco de produção atual. A produção evoluiu para um esquema diferente, com `question_options`, `question_topics`, suites de treino/simulação/desempenho e migrações específicas do beta.
+
+Para mudanças futuras no banco, use migrações incrementais e revise o estado real antes de aplicar DDL.
+
+## Feedback do beta
+
+O formulário de feedback grava em `beta_feedback` para usuários autenticados. São enviados apenas:
+
+- categoria e descrição digitadas pelo usuário;
+- página, idioma e versão do app;
+- user agent/plataforma e viewport.
+
+Tokens de autenticação e e-mail não são anexados automaticamente ao feedback.
+
+## Pipeline de produção
+
+`.github/workflows/pages.yml` executa, entre outras verificações:
+
+1. patches idempotentes do runtime;
+2. geração dos 114 SVGs;
+3. geração dos 42 PDFs;
+4. sintaxe de todos os scripts ativos;
+5. existência de todas as referências JS/CSS do `index.html`;
+6. integridade de 114 casos/114 questões e exatamente uma resposta correta;
+7. integridade das 21 aulas/190 estudos de caso nos dois idiomas;
+8. regressões de navegação/sessão e visualizador mobile;
+9. varredura de segredos no frontend;
+10. validação dos SVGs/PDFs;
+11. montagem de um artefato limpo, sem scripts Python, SQL, `.github` ou arquivos Supabase;
+12. deploy no GitHub Pages somente após sucesso em `main`.
+
+## Rodar localmente como produção
 
 Na raiz do repositório:
 
@@ -137,6 +152,10 @@ Na raiz do repositório:
 python -m pip install reportlab cairosvg pypdf
 python scripts/patch_i18n.py
 python scripts/patch_app_language.py
+python scripts/patch_mobile_zoom.py
+python scripts/patch_simulation_autofinish.py
+python scripts/patch_training_performance_focus.py
+python scripts/patch_floating_tutor_nav.py
 python scripts/generate_ecg_svgs.py
 python scripts/generate_lesson_pdfs.py
 python -m http.server 8000
@@ -144,25 +163,11 @@ python -m http.server 8000
 
 Depois abra `http://localhost:8000`.
 
-## GitHub Pages
+## Limites conhecidos da Beta 1.0
 
-O workflow `.github/workflows/pages.yml`:
+- o painel administrativo legado de autoria de conteúdo não faz parte do rollout público da Beta 1.0;
+- respostas corretas da biblioteca educacional existem no bundle do navegador, portanto a plataforma é adequada para aprendizagem, não para provas de alta segurança;
+- ditado depende do suporte de reconhecimento de voz do navegador;
+- funções de IA dependem da disponibilidade do provedor externo e possuem fallback de interface quando indisponíveis.
 
-1. valida pull requests para `main`;
-2. endurece a localização bilíngue;
-3. gera 114 SVGs;
-4. gera 42 PDFs;
-5. valida referências de scripts, sintaxe JavaScript/Python e quantidade/paginação dos PDFs;
-6. em `main`, publica o artefato no GitHub Pages.
-
-Em **Settings → Pages**, a origem deve ser **GitHub Actions**.
-
-Site esperado:
-
-```text
-https://xmizutsuki.github.io/ecgapp/
-```
-
-## Aviso educacional
-
-Os traçados e casos são reconstruções/simulações para ensino. Não representam ECGs ou pacientes reais e não substituem avaliação clínica, laudo profissional, protocolos institucionais ou julgamento clínico.
+Consulte `BETA_1_0_READINESS.md` para o registro técnico da revisão de lançamento.

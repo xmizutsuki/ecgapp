@@ -11,9 +11,7 @@
   <link rel="stylesheet" href="release_features.css" />
   <link rel="stylesheet" href="performance_features.css" />
   <link rel="stylesheet" href="floating_tutor_v2.css" />
-  <link rel="stylesheet" href="premium_motion.css" />
-  <link rel="stylesheet" href="premium_motion_overrides.css" />
-  <!-- Legacy CI markers only; these assets are intentionally NOT loaded: floating_tutor.css -->
+  <!-- Legacy/retired UI assets intentionally NOT loaded: floating_tutor.css premium_motion.css premium_motion_overrides.css -->
 </head>
 <body>
   <div id="languageGate" class="language-gate" aria-label="Language selection">
@@ -67,8 +65,11 @@
   <script src="simulation_zoom.js"></script>
   <script src="bilingual_ui_fixes.js"></script>
   <script src="performance_features.js"></script>
-  <!-- Legacy CI markers only; intentionally NOT loaded: tutor_bilingual_fix.js floating_tutor.js -->
+  <!-- Legacy Tutor assets intentionally NOT loaded: tutor_bilingual_fix.js floating_tutor.js -->
   <script src="floating_tutor_v2.js"></script>
-  <script src="premium_motion.js"></script>
+
+  <!-- Premium UI v2 is loaded LAST on purpose, after feature-specific injected styles. -->
+  <link rel="stylesheet" href="premium_ui_v2.css?v=20260904-2" />
+  <script src="premium_ui_v2.js?v=20260904-2"></script>
 </body>
 </html>

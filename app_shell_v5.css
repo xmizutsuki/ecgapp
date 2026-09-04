@@ -48,9 +48,6 @@
     overflow:visible!important;
   }
 
-  /* Fixed rail + document content. Do not rely on CSS sticky here: the previous
-     implementation could attach to the wrong scrolling ancestor and visibly end
-     after the user scrolled, which is exactly the failure shown in the report. */
   .shell{
     display:block!important;
     width:100%;
@@ -77,8 +74,6 @@
 
   .sidebar .brand{flex:0 0 auto}
 
-  /* The menu may scroll internally only on unusually short displays. Its scrollbar
-     remains hidden; the user still gets wheel/touch scrolling inside the rail. */
   .sidebar .nav{
     flex:1 1 auto;
     min-height:0;
@@ -95,8 +90,10 @@
     min-width:0;
   }
 
-  /* Main content owns no scrollbar. Its left offset exactly matches the fixed rail,
-     so long pages remain one continuous document without overlap or a fake split. */
+  /* UI Foundation v3 also declares .main with !important and a more-specific
+     body.ui-foundation-v3 selector. Match that specificity here so the fixed-rail
+     offset cannot be silently overridden and slide content underneath the sidebar. */
+  body.ui-foundation-v3 .main,
   .main{
     position:relative;
     box-sizing:border-box!important;
@@ -124,8 +121,6 @@
     min-width:0;
   }
 
-  /* Defensive horizontal-overflow rules for feature layouts. Dynamic feature CSS
-     is injected before this stylesheet, so these rules safely win when required. */
   .cat-home,
   .cat-section,
   .cat-history-list,
@@ -141,10 +136,8 @@
     min-width:0;
   }
 
-  /* Keep the Tutor clear of the viewport scrollbar at the far edge. */
   .ft2-fab{right:24px!important}
 
-  /* Beta feedback belongs to the navigation footer, never over the user card. */
   .sidebar-footer .beta-feedback-launcher{
     position:static!important;
     inset:auto!important;
@@ -182,13 +175,12 @@
   }
 }
 
-/* The base UI collapses the rail at 1100px. Mirror that exact width in the main
-   offset so there is never an overlap or an empty 250px gutter. */
 @media (min-width:721px) and (max-width:1100px){
   .sidebar{
     width:84px!important;
   }
 
+  body.ui-foundation-v3 .main,
   .main{
     width:calc(100% - 84px)!important;
     margin-left:84px!important;
@@ -224,10 +216,6 @@
   }
 }
 
-/* A 250px desktop rail reduces the actual content width. Several legacy feature
-   breakpoints were written against the full viewport, so they stayed in a 4/5/6
-   column desktop layout even when only ~900px remained. Shift those layouts early
-   enough to prevent cards and buttons from being clipped off the right edge. */
 @media (min-width:1101px) and (max-width:1450px){
   .cat-history-item{
     grid-template-columns:minmax(0,1fr) auto!important;
@@ -271,6 +259,7 @@
 
   .sidebar{display:none!important}
 
+  body.ui-foundation-v3 .main,
   .main{
     width:100%!important;
     max-width:none!important;

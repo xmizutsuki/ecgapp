@@ -237,9 +237,9 @@ function shell(){
     </aside>
     <main class="main">
       <div class="topbar"><div><h1 id="pageTitle">ECG Lab</h1><p id="pageSubtitle">Treinamento estruturado de eletrocardiografia.</p></div><div class="actions"><button class="btn btn-secondary hide-mobile" data-page="treinar">Treino rápido</button>${state.user||state.demo?`<button class="btn btn-ghost" id="logoutBtn">Sair</button>`:`<button class="btn btn-primary" id="openLogin">Entrar</button>`}</div></div>
-      <section id="dashboard" class="page"></section><section id="treinar" class="page"></section><section id="trilha" class="page"></section><section id="simulados" class="page"></section><section id="tutor" class="page"></section>${admin?'<section id="admin" class="page"></section>':''}
+      <section id="dashboard" class="page"></section><section id="treinar" class="page"></section><section id="trilha" class="page"></section><section id="simulados" class="page"></section><section id="desempenho" class="page"></section><section id="tutor" class="page"></section>${admin?'<section id="admin" class="page"></section>':''}
     </main>
-    <nav class="mobile-nav">${mobileNav('dashboard','⌂','Início')}${mobileNav('treinar','⌁','Treinar')}${mobileNav('trilha','▤','Trilha')}${mobileNav('simulados','◫','Simulado')}${mobileNav('tutor','✦','Tutor')}</nav>
+    <nav class="mobile-nav">${mobileNav('dashboard','⌂','Início')}${mobileNav('treinar','⌁','Treinar')}${mobileNav('trilha','▤','Trilha')}${mobileNav('simulados','◫','Simulado')}${mobileNav('desempenho','↗','Desempenho')}${mobileNav('tutor','✦','Tutor')}</nav>
   </div>`;
   wireShell();
   renderAll();
@@ -256,12 +256,12 @@ function showPage(id){
   if(!document.getElementById(id)) id='dashboard'; state.page=id;
   document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.id===id));
   document.querySelectorAll('[data-page]').forEach(b=>b.classList.toggle('active',b.dataset.page===id));
-  const meta={dashboard:['Dashboard','Seu progresso e próximos passos.'],treinar:['Treinar ECG','Interpretação guiada com feedback imediato.'],trilha:['Trilha de estudo','Do básico ao avançado em módulos progressivos.'],simulados:['Simulados','Avalie seu domínio com questões cronometradas.'],tutor:['Tutor IA','Tire dúvidas sobre conceitos e raciocínio eletrocardiográfico.'],admin:['Painel administrativo','Gerencie ECGs e conteúdo educacional.']};
+  const meta={dashboard:['Dashboard','Seu progresso e próximos passos.'],treinar:['Treinar ECG','Interpretação guiada com feedback imediato.'],trilha:['Trilha de estudo','Do básico ao avançado em módulos progressivos.'],simulados:['Simulados','Avalie seu domínio com questões cronometradas.'],desempenho:['Meu Desempenho','Acompanhe sua evolução e transforme resultados em um plano de estudo.'],tutor:['Tutor IA','Tire dúvidas sobre conceitos e raciocínio eletrocardiográfico.'],admin:['Painel administrativo','Gerencie ECGs e conteúdo educacional.']};
   const m=meta[id]||meta.dashboard;document.getElementById('pageTitle').textContent=m[0];document.getElementById('pageSubtitle').textContent=m[1];
   window.scrollTo({top:0,behavior:'smooth'});
 }
 
-function renderAll(){renderDashboard();renderTraining();renderTrail();renderSims();renderTutor();if(state.profile?.role==='admin')renderAdmin()}
+function renderAll(){renderDashboard();renderTraining();renderTrail();renderSims();window.ECG_PERFORMANCE?.render?.();renderTutor();if(state.profile?.role==='admin')renderAdmin()}
 function renderDashboard(){
   const el=document.getElementById('dashboard');
   el.innerHTML=`

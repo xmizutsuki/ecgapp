@@ -1,8 +1,8 @@
 // ECG Lab — CardioTutor / CaseCoach
-// Primary provider: Google Gemini
-// Secret required: GEMINI_API_KEY
-// Optional: GEMINI_MODEL (default: gemini-3.6-flash)
-// Optional: GEMINI_FALLBACK_MODEL (default: gemini-3.5-flash-lite)
+// Primary provider: Groq
+// Secret required: GROQ_API_KEY
+// Optional: GROQ_MODEL (default: openai/gpt-oss-20b)
+// Optional: GROQ_FALLBACK_MODEL (default: llama-3.1-8b-instant)
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 
@@ -32,12 +32,12 @@ serve(async (req) => {
     const body = await req.json();
     const language = body?.language === "en" ? "en" : "pt-BR";
     const mode = body?.mode === "case-feedback" ? "case-feedback" : "tutor";
-    const geminiKey = Deno.env.get("GEMINI_API_KEY");
-    if (!geminiKey) return json({ error: "GEMINI_API_KEY is not configured." }, 500);
+    const groqKey = Deno.env.get("GROQ_API_KEY");
+    if (!groqKey) return json({ error: "GROQ_API_KEY is not configured." }, 500);
 
     return mode === "case-feedback"
-      ? await handleCaseFeedback(body, language, geminiKey)
-      : await handleTutor(body, language, geminiKey);
+      ? await handleCaseFeedback(body, language, groqKey)
+      : await handleTutor(body, language, groqKey);
   } catch (e) {
     return json({ error: friendlyError(e) }, errorStatus(e));
   }
@@ -82,7 +82,7 @@ Os traçados do ECG Lab são reconstruções educacionais sintéticas. Nunca dig
     socratic_mode: socratic,
   });
 
-  const reply = await geminiText(apiKey, instructions, input, 900, false);
+  const reply = await groqText(apiKey, instructions, input, 900, false);
   return json({ reply: reply || (language === "en" ? "I could not generate a response right now." : "Não consegui gerar uma resposta agora.") });
 }
 
@@ -98,7 +98,7 @@ async function handleCaseFeedback(body: any, language: string, apiKey: string) {
     : `Você é o CaseCoach do CardioTutor, um avaliador EDUCACIONAL de raciocínio em ECG. O caso é fictício e pertence ao ECG Lab. Compare o raciocínio do estudante com a resposta e o raciocínio de referência. Dê nota de 0 a 100, valorize observações corretas mesmo se o diagnóstico final estiver errado, identifique erros concretos e causas prováveis e apresente um modelo passo a passo conciso. Retorne SOMENTE JSON válido com exatamente estas chaves: {"score":number,"verdict":string,"summary":string,"strengths":string[],"corrections":string[],"error_reasons":string[],"correct_reasoning":string[],"ideal_answer":string,"next_time":string[]}. Mantenha cada lista com 1-5 itens concisos.`;
 
   const input = JSON.stringify({ student_answer: answer, case: sanitizeCase(c) });
-  const raw = await geminiText(apiKey, instructions, input, 1200, true);
+  const raw = await groqText(apiKey, instructions, input, 1200, true);
   const parsed = parseJsonObject(raw);
   if (!parsed) return json({ error: language === "en" ? "AI returned an invalid feedback format." : "A IA retornou um formato de feedback inválido." }, 502);
   return json({ feedback: normalizeFeedback(parsed, language) });
@@ -129,57 +129,59 @@ function sanitizeCase(c: any) {
   return out;
 }
 
-async function geminiText(apiKey: string, systemInstruction: string, input: string, maxOutputTokens: number, jsonMode: boolean) {
-  const preferred = Deno.env.get("GEMINI_MODEL") || "gemini-3.6-flash";
-  const fallback = Deno.env.get("GEMINI_FALLBACK_MODEL") || "gemini-3.5-flash-lite";
+async function groqText(apiKey: string, systemInstruction: string, input: string, maxOutputTokens: number, jsonMode: boolean) {
+  const preferred = Deno.env.get("GROQ_MODEL") || "openai/gpt-oss-20b";
+  const fallback = Deno.env.get("GROQ_FALLBACK_MODEL") || "llama-3.1-8b-instant";
   const models = [...new Set([preferred, fallback].filter(Boolean))];
   let lastError: any = null;
 
   for (const model of models) {
     try {
-      return await callGenerateContent(apiKey, model, systemInstruction, input, maxOutputTokens, jsonMode);
+      return await callGroq(apiKey, model, systemInstruction, input, maxOutputTokens, jsonMode);
     } catch (e) {
       lastError = e;
       if (!isModelAvailabilityError(e)) throw e;
     }
   }
-  throw lastError || new Error("No Gemini model is available.");
+  throw lastError || new Error("No Groq model is available.");
 }
 
-async function callGenerateContent(apiKey: string, model: string, systemInstruction: string, input: string, maxOutputTokens: number, jsonMode: boolean) {
+async function callGroq(apiKey: string, model: string, systemInstruction: string, input: string, maxOutputTokens: number, jsonMode: boolean) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 25000);
   try {
-    const generationConfig: Record<string, unknown> = { temperature: jsonMode ? 0.2 : 0.35, maxOutputTokens };
-    if (jsonMode) generationConfig.responseMimeType = "application/json";
+    const body: Record<string, unknown> = {
+      model,
+      messages: [
+        { role: "system", content: systemInstruction },
+        { role: "user", content: input },
+      ],
+      max_completion_tokens: maxOutputTokens,
+      temperature: jsonMode ? 0.2 : 0.35,
+    };
+    if (model.startsWith("openai/gpt-oss-")) body.reasoning_effort = "low";
+    if (jsonMode) body.response_format = { type: "json_object" };
 
-    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
+    const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
-      headers: { "x-goog-api-key": apiKey, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: systemInstruction }] },
-        contents: [{ role: "user", parts: [{ text: input }] }],
-        generationConfig,
-      }),
+      headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify(body),
       signal: controller.signal,
     });
 
     const data = await r.json().catch(() => ({}));
     if (!r.ok) {
-      const err: any = new Error(data?.error?.message || `Gemini API error (${r.status}).`);
+      const err: any = new Error(data?.error?.message || `Groq API error (${r.status}).`);
       err.status = r.status;
       err.model = model;
       throw err;
     }
 
-    const text = data?.candidates?.[0]?.content?.parts?.map((p: any) => typeof p?.text === "string" ? p.text : "").filter(Boolean).join("\n") || "";
-    if (!text) {
-      const reason = data?.promptFeedback?.blockReason || data?.candidates?.[0]?.finishReason;
-      throw new Error(reason ? `Gemini returned no text (${reason}).` : "Gemini returned no text.");
-    }
+    const text = data?.choices?.[0]?.message?.content;
+    if (!text || typeof text !== "string") throw new Error("Groq returned no text.");
     return text;
   } catch (e) {
-    if (e?.name === "AbortError") throw new Error("Gemini request timed out.");
+    if (e?.name === "AbortError") throw new Error("Groq request timed out.");
     throw e;
   } finally {
     clearTimeout(timer);
@@ -188,7 +190,7 @@ async function callGenerateContent(apiKey: string, model: string, systemInstruct
 
 function isModelAvailabilityError(e: any) {
   const msg = e?.message || "";
-  return e?.status === 404 || /no longer available|not available to new users|model.*not found|unsupported model/i.test(msg);
+  return e?.status === 404 || /model.*(not found|decommissioned|unavailable|does not exist)|invalid model/i.test(msg);
 }
 
 function parseJsonObject(text: string) {
@@ -214,14 +216,14 @@ function normalizeFeedback(v: any, language: string) {
 
 function friendlyError(e: any) {
   const msg = e?.message || String(e || "Internal error.");
-  if (/quota|rate limit|resource exhausted|429/i.test(msg)) return "Limite gratuito da IA atingido. Tente novamente mais tarde.";
-  if (/api key|API_KEY_INVALID|permission/i.test(msg)) return "A chave da IA está inválida ou sem permissão.";
+  if (/quota|rate limit|too many requests|429/i.test(msg)) return "Limite gratuito da IA atingido. Tente novamente mais tarde.";
+  if (/api key|invalid.*key|unauthorized|401/i.test(msg)) return "A chave da IA está inválida ou sem permissão.";
   if (/timed out|timeout/i.test(msg)) return "A IA demorou mais que o esperado. Tente novamente.";
   return msg;
 }
 
 function errorStatus(e: any) {
-  if (e?.status === 429 || /quota|rate limit|resource exhausted/i.test(e?.message || "")) return 429;
+  if (e?.status === 429 || /quota|rate limit|too many requests/i.test(e?.message || "")) return 429;
   if (e?.status === 401 || e?.status === 403) return e.status;
   return 500;
 }

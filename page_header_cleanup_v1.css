@@ -1,0 +1,25 @@
+/* ECG Lab — removes redundant shell page heading for content-rich primary pages. */
+.main.hide-shell-page-meta > .topbar{
+  min-height:52px!important;
+  padding-top:10px!important;
+  padding-bottom:10px!important;
+  align-items:center!important;
+  justify-content:flex-end!important;
+}
+.main.hide-shell-page-meta > .topbar > div:first-child{
+  display:none!important;
+}
+.main.hide-shell-page-meta > .topbar > .actions{
+  margin-left:auto!important;
+}
+.main.hide-shell-page-meta > .page.active{
+  margin-top:4px!important;
+}
+@media(max-width:720px){
+  .main.hide-shell-page-meta > .topbar{
+    min-height:54px!important;
+  }
+  .main.hide-shell-page-meta > .page.active{
+    margin-top:0!important;
+  }
+}

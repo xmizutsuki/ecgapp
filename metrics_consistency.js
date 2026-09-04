@@ -156,7 +156,21 @@
     window.loadUserStats=async()=>{const s=canonicalSummary();const a=document.getElementById('statAccuracy'),x=document.getElementById('statXP'),c=document.getElementById('statCases');if(a)a.textContent=fmtPct(s.accuracy);if(x)x.textContent=s.xp.toLocaleString(isEn()?'en-US':'pt-BR');if(c)c.textContent=String(s.uniqueEcgs);scheduleCloudSync(s)};
     const originalUpdate=window.updateProgress;
     if(typeof originalUpdate==='function'&&!originalUpdate.__canonicalWrapped){const wrapped=async function(correct){const r=await originalUpdate(correct);perf()?.backfillSources?.();setTimeout(()=>{if(appState()?.page==='dashboard')renderCanonicalDashboard();if(appState()?.page==='desempenho')patchPerformancePage();else scheduleCloudSync(canonicalSummary())},120);return r};wrapped.__canonicalWrapped=true;window.updateProgress=wrapped}
-    if(observer)observer.disconnect();observer=new MutationObserver(()=>{if(appState()?.page==='desempenho')setTimeout(patchPerformancePage,0)});observer.observe(document.documentElement,{subtree:true,childList:true});
+    if(observer)observer.disconnect();
+    const performanceRoot=document.getElementById('desempenho');
+    if(performanceRoot){
+      let patchQueued=false;
+      observer=new MutationObserver(()=>{
+        if(appState()?.page!=='desempenho'||patchQueued)return;
+        patchQueued=true;
+        requestAnimationFrame(()=>{patchQueued=false;patchPerformancePage()});
+      });
+      observer.observe(performanceRoot,{childList:true,subtree:true});
+    }
+    window.addEventListener('ecg:pagechange',e=>{
+      if(e.detail?.to==='dashboard')setTimeout(renderCanonicalDashboard,0);
+      if(e.detail?.to==='desempenho')setTimeout(patchPerformancePage,0);
+    });
     setTimeout(()=>{if(document.getElementById('dashboard'))renderCanonicalDashboard();if(appState()?.page==='desempenho')patchPerformancePage();else scheduleCloudSync(canonicalSummary())},80);
     window.addEventListener('storage',()=>setTimeout(()=>{if(appState()?.page==='dashboard')renderCanonicalDashboard();if(appState()?.page==='desempenho')patchPerformancePage()},80));
   }

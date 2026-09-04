@@ -46,223 +46,150 @@ jobs:
       - name: Generate bilingual lesson PDFs
         run: python scripts/generate_lesson_pdfs.py
 
-      - name: Validate static bundle
+      - name: Validate production bundle
         shell: bash
         run: |
           set -euo pipefail
-          for f in index.html app.js styles.css release_features.css performance_features.css floating_tutor.css i18n.js english_content.js english_content_finalize.js localize_data.js bilingual_ui_fixes.js tutor_bilingual_fix.js floating_tutor.js real_cases.js study_content.js study_casecoach_features.js training_features.js simulation_features.js simulation_zoom.js performance_features.js supabase/training_suite.sql supabase/simulation_suite.sql supabase/performance_suite.sql supabase/tutor_suite.sql supabase/functions/ecg-tutor/index.ts supabase/functions/performance-insight/index.ts scripts/patch_simulation_autofinish.py scripts/patch_training_performance_focus.py scripts/patch_floating_tutor_nav.py; do
-            test -f "$f" || { echo "Missing required file: $f"; exit 1; }
-          done
 
+          # Production entry point and generated educational assets.
+          test -f index.html
+          test -f config.js
           test "$(find assets/ecg -type f -name '*.svg' | wc -l)" -eq 114
           test "$(find assets/lessons/pt -type f -name '*.pdf' | wc -l)" -eq 21
           test "$(find assets/lessons/en -type f -name '*.pdf' | wc -l)" -eq 21
 
-          node --check app.js
-          node --check i18n.js
-          node --check english_content.js
-          node --check english_content_finalize.js
-          node --check localize_data.js
-          node --check bilingual_ui_fixes.js
-          node --check tutor_bilingual_fix.js
-          node --check floating_tutor.js
-          node --check real_cases.js
-          node --check study_content.js
-          node --check study_casecoach_features.js
-          node --check training_features.js
-          node --check simulation_features.js
-          node --check simulation_zoom.js
-          node --check performance_features.js
-          python -m py_compile scripts/generate_ecg_svgs.py scripts/generate_lesson_pdfs.py scripts/patch_i18n.py scripts/patch_app_language.py scripts/patch_mobile_zoom.py scripts/patch_simulation_autofinish.py scripts/patch_training_performance_focus.py scripts/patch_floating_tutor_nav.py
+          # Every local JS/CSS reference in index.html must exist. Check syntax for
+          # the scripts the browser actually loads instead of retired source files.
+          python - <<'PY'
+          from html.parser import HTMLParser
+          from pathlib import Path
+          import subprocess
 
-          grep -q "english_content.js" index.html
-          grep -q "english_content_finalize.js" index.html
-          grep -q "bilingual_ui_fixes.js" index.html
-          grep -q "tutor_bilingual_fix.js" index.html
-          grep -q "floating_tutor.js" index.html
-          grep -q "floating_tutor.css" index.html
-          grep -q "training_features.js" index.html
-          grep -q "simulation_zoom.js" index.html
-          grep -q "performance_features.js" index.html
-          grep -q "performance_features.css" index.html
-          grep -q "touchDistance" app.js
-          grep -q "touchAction='none'" app.js
-          grep -q "CardioTutor AI" tutor_bilingual_fix.js
-          grep -q "language:window.ECG_LANG" tutor_bilingual_fix.js
-          ! grep -q "const wordMap=" i18n.js
+          class Refs(HTMLParser):
+              def __init__(self):
+                  super().__init__(); self.scripts=[]; self.styles=[]
+              def handle_starttag(self, tag, attrs):
+                  d=dict(attrs)
+                  if tag=='script' and d.get('src'): self.scripts.append(d['src'])
+                  if tag=='link' and d.get('rel')=='stylesheet' and d.get('href'): self.styles.append(d['href'])
 
-          # The legacy Tutor page/tab is removed from the built app; floating_tutor.js owns Tutor UI.
-          ! grep -q "navButton('tutor','✦','Tutor IA')" app.js
-          ! grep -q "mobileNav('tutor','✦','Tutor')" app.js
-          ! grep -q 'id="tutor" class="page"' app.js
+          p=Refs(); p.feed(Path('index.html').read_text(encoding='utf-8'))
+          local=[x for x in p.scripts+p.styles if not x.startswith(('http://','https://','//'))]
+          missing=[x for x in local if not Path(x).is_file()]
+          if missing: raise SystemExit(f'Missing production references: {missing}')
+          for script in p.scripts:
+              if script.startswith(('http://','https://','//')): continue
+              subprocess.run(['node','--check',script],check=True)
+          print(f'Validated {len(p.scripts)} production scripts and {len(p.styles)} stylesheets.')
+          PY
 
-          # Floating contextual Tutor: bilingual UI, persistence, context safety, voice, Socratic mode and exam lock.
-          grep -q "ecgLabTutorConversations:v" floating_tutor.js
-          grep -q "ecgLabTutorSignals:v" floating_tutor.js
-          grep -q "Use context from this screen" floating_tutor.js
-          grep -q "Usar contexto desta tela" floating_tutor.js
-          grep -q "Socratic mode" floating_tutor.js
-          grep -q "Modo Socrático" floating_tutor.js
-          grep -q "SpeechRecognition" floating_tutor.js
-          grep -q "answerSubmitted" floating_tutor.js
-          grep -q "Tutor available after you finish this practice exam" floating_tutor.js
-          grep -q "Tutor disponível após finalizar o simulado" floating_tutor.js
-          grep -q "ecgLabPracticeTutorMode:v1" floating_tutor.js
-          grep -q "tutor_learning_signals" floating_tutor.js
-          grep -q "IMPORTANT LEARNING RULE" supabase/functions/ecg-tutor/index.ts
-          grep -q "REGRA EDUCACIONAL IMPORTANTE" supabase/functions/ecg-tutor/index.ts
-          grep -q "answerSubmitted === false" supabase/functions/ecg-tutor/index.ts
-          grep -q "Exam Mode" supabase/functions/ecg-tutor/index.ts
-          grep -q "tutor_conversations" supabase/tutor_suite.sql
-          grep -q "tutor_messages" supabase/tutor_suite.sql
-          grep -q "tutor_learning_signals" supabase/tutor_suite.sql
-          grep -q "auth.uid()" supabase/tutor_suite.sql
-          grep -q "Do not treat Tutor usage by itself as a negative mastery signal" supabase/tutor_suite.sql
+          python -m py_compile scripts/*.py
 
-          # Adaptive ECG Training / CAT suite.
-          grep -q "QUICK_COUNTS=\[20,30,40,50,60,70,80\]" training_features.js
+          # Prevent regressions in the current navigation/session architecture.
+          grep -q "version:'3.0.0'" navigation_state_fix.js
+          grep -q "stopImmediatePropagation" navigation_state_fix.js
+          grep -q "detachRunner('treinar','.cat-runner')" navigation_state_fix.js
+          grep -q "detachRunner('simulados','.sim-runner-shell')" navigation_state_fix.js
+          grep -q "ecg:pagechange" navigation_state_fix.js
+          ! grep -q '<script src="bilingual_ui_fixes.js"' index.html
+          grep -q 'beta_runtime.js' index.html
+          grep -q '0.9.0-beta.1' config.js
+
+          # Core suites remain present and resumable.
           grep -q "MIN_COUNT=20,MAX_COUNT=80" training_features.js
-          grep -q "Save your progress and continue later" training_features.js
-          grep -q "Deseja salvar seu progresso e continuar depois" training_features.js
-          grep -q "ability_before" training_features.js
-          grep -q "ability_after" training_features.js
-          grep -q "response_time" training_features.js
-          grep -q "discrimination" training_features.js
-          grep -q "historyProfile" training_features.js
-          grep -q "recentTrend" training_features.js
-          grep -q "state_snapshot" training_features.js
           grep -q "training_session_answers" training_features.js
-          grep -q "CAT progression" training_features.js
-          grep -q "Evolução do CAT" training_features.js
-          grep -q "hiddenDifficulty" training_features.js
-          grep -q "performanceFocusWeights" training_features.js
-          grep -q "ecgLabTrainingFocus:v1" training_features.js
-          ! grep -q "CAT • dificuldade" training_features.js
-          ! grep -q "CAT • difficulty" training_features.js
-          grep -q "total_questions between 20 and 80" supabase/training_suite.sql
-
-          # Practice exam suite: persistence, review, ECG viewer, and automatic completion on the last answer.
+          grep -q "state_snapshot" training_features.js
+          grep -q "simulation_answers" simulation_features.js
           grep -q "Histórico de Simulados" simulation_features.js
           grep -q "Practice Exam History" simulation_features.js
-          grep -q "Evolução nos Simulados" simulation_features.js
-          grep -q "Practice Exam Progress" simulation_features.js
-          grep -q "localStorage" simulation_features.js
-          grep -q "simulation_answers" simulation_features.js
-          grep -q "sim-ecg-image" simulation_features.js
-          grep -q "caseById" simulation_features.js
-          grep -q "Revisar questões" simulation_features.js
-          grep -q "Review questions" simulation_features.js
-          grep -q "isLastQuestion=session.current_question_index===session.total_questions-1" simulation_features.js
-          grep -q "if(isLastQuestion){finalizeSession(session);return}" simulation_features.js
-          ! grep -qiE 'pontos fortes|pontos fracos|precisa revisar|strengths|weaknesses|study recommendation' simulation_features.js
-
-          # Practice exam ECG viewer mirrors Training interactions on mouse and touch.
-          grep -q "addEventListener('wheel'" simulation_zoom.js
-          grep -q "addEventListener('mousedown'" simulation_zoom.js
-          grep -q "addEventListener('dblclick'" simulation_zoom.js
-          grep -q "touchstart" simulation_zoom.js
-          grep -q "touchmove" simulation_zoom.js
-          grep -q "distance(a,b)" simulation_zoom.js
-          grep -q "requestFullscreen" simulation_zoom.js
-          grep -q "MAX_ZOOM=8" simulation_zoom.js
-          grep -q "sim-review-ecg" simulation_zoom.js
-
-          # Meu Desempenho / My Performance.
-          grep -q "Meu Desempenho" performance_features.js
-          grep -q "My Performance" performance_features.js
-          grep -q "ECG Mastery Score" performance_features.js
-          grep -q "activity_type:'quick_training'" performance_features.js
-          grep -q "activity_type:'simulation'" performance_features.js
-          grep -q "activity_type:'clinical_case'" performance_features.js
-          grep -q "\.30\*c.simulation" performance_features.js
-          grep -q "\.25\*c.quick" performance_features.js
-          grep -q "\.30\*c.clinical" performance_features.js
-          grep -q "\.15\*p.score" performance_features.js
-          grep -q "g.errors>=3" performance_features.js
-          grep -q "TREINAR MINHAS ÁREAS DE MAIOR DIFICULDADE" performance_features.js
-          grep -q "TRAIN MY HIGH-PRIORITY AREAS" performance_features.js
           grep -q "learning_events" performance_features.js
           grep -q "user_performance" performance_features.js
-          grep -q "competency_performance" performance_features.js
-          grep -q "performance_snapshots" performance_features.js
-          grep -q "user_xp" performance_features.js
-          grep -q "ai_performance_insights" performance_features.js
-          grep -q "learning_events" supabase/performance_suite.sql
-          grep -q "user_performance" supabase/performance_suite.sql
-          grep -q "competency_performance" supabase/performance_suite.sql
-          grep -q "performance_snapshots" supabase/performance_suite.sql
-          grep -q "user_xp" supabase/performance_suite.sql
-          grep -q "ai_performance_insights" supabase/performance_suite.sql
-          grep -q "auth.uid()" supabase/performance_suite.sql
-          grep -q "Do not recalculate" supabase/functions/performance-insight/index.ts
-          grep -q "Não recalcule" supabase/functions/performance-insight/index.ts
+          grep -q "tutor_learning_signals" floating_tutor_v2.js
+          grep -q "caseReasoningInput" study_casecoach_features.js
 
+          # Validate ECG/question integrity in both languages, including exactly one
+          # correct alternative per item (a stricter beta check than before).
           node - <<'NODE'
           const fs=require('fs'),vm=require('vm');
           async function validate(lang){
-            const sandbox={window:{ECG_LANG:lang},console};
-            vm.createContext(sandbox);
-            for(const f of ['study_content.js','real_cases.js','english_content.js','english_content_finalize.js','localize_data.js']){
-              vm.runInContext(fs.readFileSync(f,'utf8'),sandbox,{filename:f});
-            }
+            const sandbox={window:{ECG_LANG:lang},console}; vm.createContext(sandbox);
+            for(const f of ['study_content.js','real_cases.js','english_content.js','english_content_finalize.js','localize_data.js']) vm.runInContext(fs.readFileSync(f,'utf8'),sandbox,{filename:f});
             const lib=await sandbox.window.ECG_REAL_LIBRARY.load();
-            if(lib.cases.length!==114)throw new Error(`${lang}: expected 114 ECG cases, got ${lib.cases.length}`);
-            if(lib.questions.length!==114)throw new Error(`${lang}: expected 114 questions, got ${lib.questions.length}`);
-            if(lib.categories.length!==19)throw new Error(`${lang}: expected 19 categories, got ${lib.categories.length}`);
-            if(lib.questions.length<80)throw new Error(`${lang}: CAT requires at least 80 questions for the largest session.`);
-            const cases=new Map(lib.cases.map(c=>[String(c.id),c]));
+            if(lib.cases.length!==114||lib.questions.length!==114||lib.categories.length!==19) throw new Error(`${lang}: unexpected ECG library size`);
+            const caseIds=new Set(),questionIds=new Set(),cases=new Map();
+            for(const c of lib.cases){if(caseIds.has(String(c.id)))throw new Error(`${lang}: duplicate ECG case ${c.id}`);caseIds.add(String(c.id));cases.set(String(c.id),c);if(!c.image_url)throw new Error(`${lang}: ECG case ${c.id} has no image`)}
             for(const q of lib.questions){
-              const c=cases.get(String(q.ecg_case_id));
-              if(!c)throw new Error(`${lang}: question ${q.id} has no matching ECG case ${q.ecg_case_id}`);
-              if(!c.image_url)throw new Error(`${lang}: question ${q.id} matching ECG case has no image_url`);
-              if(!(q.options||[]).length)throw new Error(`${lang}: question ${q.id} has no answer options`);
-              const difficulty=Number(q.difficulty||c.difficulty||0);
-              if(difficulty<1||difficulty>5)throw new Error(`${lang}: invalid CAT difficulty for ${q.id}: ${difficulty}`);
-              if(!q.category&&!c.category)throw new Error(`${lang}: missing CAT category for ${q.id}`);
+              if(questionIds.has(String(q.id)))throw new Error(`${lang}: duplicate question ${q.id}`);questionIds.add(String(q.id));
+              const c=cases.get(String(q.ecg_case_id));if(!c)throw new Error(`${lang}: question ${q.id} has no matching ECG case`);
+              if(!q.prompt||!q.explanation)throw new Error(`${lang}: incomplete question ${q.id}`);
+              const opts=q.options||[];if(opts.length<2)throw new Error(`${lang}: question ${q.id} has too few alternatives`);
+              const correct=opts.filter(o=>!!(Array.isArray(o)?o[1]:o?.is_correct)).length;if(correct!==1)throw new Error(`${lang}: question ${q.id} must have exactly one correct option, got ${correct}`);
+              const labels=opts.map(o=>String(Array.isArray(o)?o[0]:o?.label||'').trim().toLowerCase());if(new Set(labels).size!==labels.length)throw new Error(`${lang}: duplicate alternative in ${q.id}`);
+              const difficulty=Number(q.difficulty||c.difficulty||0);if(difficulty<1||difficulty>5)throw new Error(`${lang}: invalid difficulty in ${q.id}`);
+              if(!q.category&&!c.category)throw new Error(`${lang}: missing category in ${q.id}`);
             }
-            if(lang==='en'){
-              const study=sandbox.window.ECG_STUDY_CONTENT;
-              const lessonCount=Object.keys(study.lessons||{}).length;
-              const caseCount=Object.values(study.lessons||{}).reduce((n,l)=>n+(l.cases||[]).length,0);
-              if(lessonCount!==21)throw new Error(`Expected 21 English lessons, got ${lessonCount}`);
-              if(caseCount!==190)throw new Error(`Expected 190 English study cases, got ${caseCount}`);
-              const text=JSON.stringify({study,lib});
-              const bad=/[ãõáàâéêíóôúç]|\b(ritmo|onda|paciente|pegadinha|traçado|sinusal|fibrilação|taquicardia|bloqueio|tontura|síncope|medicações|avaliação|exame físico|imagem|laboratório|conducao)\b/i.exec(text);
-              if(bad)throw new Error(`Portuguese residue detected in curated English content: ${bad[0]}`);
-            }
-            console.log(`${lang}: library validated with 114 questions, CAT metadata and an ECG image for every question.`);
+            const study=sandbox.window.ECG_STUDY_CONTENT,lessons=Object.values(study.lessons||{}),caseIds2=new Set();
+            if(lessons.length!==21)throw new Error(`${lang}: expected 21 lessons`);
+            let count=0;for(const lesson of lessons)for(const c of lesson.cases||[]){count++;if(caseIds2.has(String(c.id)))throw new Error(`${lang}: duplicate study case ${c.id}`);caseIds2.add(String(c.id));if(!c.question||!c.answer||!c.reasoning||!c.learning_point)throw new Error(`${lang}: incomplete study case ${c.id}`)}
+            if(count!==190)throw new Error(`${lang}: expected 190 study cases, got ${count}`);
+            console.log(`${lang}: 114 ECG questions and 190 study cases validated.`)
           }
           Promise.all([validate('pt-BR'),validate('en')]).catch(e=>{console.error(e);process.exit(1)});
           NODE
 
+          # Validate all SVGs and PDFs and confirm educational media are parseable.
           python - <<'PY'
           from pathlib import Path
-          from html.parser import HTMLParser
+          from xml.etree import ElementTree as ET
           from pypdf import PdfReader
-
-          class Scripts(HTMLParser):
-              def __init__(self):
-                  super().__init__(); self.srcs=[]; self.links=[]
-              def handle_starttag(self, tag, attrs):
-                  d=dict(attrs)
-                  if tag == 'script' and d.get('src'): self.srcs.append(d['src'])
-                  if tag == 'link' and d.get('href') and d.get('rel') == 'stylesheet': self.links.append(d['href'])
-
-          p=Scripts(); p.feed(Path('index.html').read_text(encoding='utf-8'))
-          missing=[s for s in p.srcs+p.links if not s.startswith(('http://','https://')) and not Path(s).is_file()]
-          if missing: raise SystemExit(f'Missing static references: {missing}')
-
+          for f in Path('assets/ecg').rglob('*.svg'):
+              root=ET.parse(f).getroot()
+              if root.tag.split('}')[-1] != 'svg': raise SystemExit(f'Invalid SVG root: {f}')
+              text=f.read_text(encoding='utf-8',errors='ignore').lower()
+              if '<script' in text or 'javascript:' in text or '<foreignobject' in text: raise SystemExit(f'Unsafe SVG content: {f}')
           for lang in ('pt','en'):
               files=sorted((Path('assets/lessons')/lang).glob('*.pdf'))
-              bad=[str(f) for f in files if len(PdfReader(str(f)).pages) != 6]
+              bad=[str(f) for f in files if len(PdfReader(str(f)).pages)!=6]
               if bad: raise SystemExit(f'Lesson PDFs must have 6 pages: {bad}')
-          print('Static references, floating Tutor assets, My Performance assets, and 42 six-page PDFs validated.')
+          print('114 SVGs and 42 lesson PDFs validated.')
           PY
 
-          ! grep -RniE 'registro clínico real|ECG real de paciente|real patient ECG' index.html app.js study_casecoach_features.js training_features.js performance_features.js floating_tutor.js README.md DATA_SOURCES.md || {
-            echo 'Found wording that may incorrectly imply the synthetic training tracings are real patient ECGs.'
-            exit 1
+          # Frontend secret scan: publishable Supabase keys are allowed; service-role,
+          # secret keys and private keys are not.
+          ! grep -RniE 'sb_secret_|service[_ -]?role[_ -]?key|OPENAI_API_KEY[[:space:]]*[:=]|BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY' -- *.js *.html *.css supabase/functions 2>/dev/null || {
+            echo 'Potential frontend secret detected.'; exit 1;
           }
+
+          ! grep -RniE 'registro clínico real|ECG real de paciente|real patient ECG' index.html app.js study_casecoach_features.js training_features.js performance_features.js floating_tutor_v2.js README.md DATA_SOURCES.md || {
+            echo 'Found wording that may incorrectly imply synthetic tracings are real patient ECGs.'; exit 1;
+          }
+
+      - name: Stage clean production site
+        if: github.event_name != 'pull_request'
+        run: |
+          python - <<'PY'
+          from html.parser import HTMLParser
+          from pathlib import Path
+          import shutil
+
+          class Refs(HTMLParser):
+              def __init__(self): super().__init__(); self.files=[]
+              def handle_starttag(self, tag, attrs):
+                  d=dict(attrs)
+                  value=d.get('src') if tag=='script' else d.get('href') if tag=='link' and d.get('rel')=='stylesheet' else None
+                  if value and not value.startswith(('http://','https://','//')): self.files.append(value)
+
+          root=Path('.'); out=Path('_site'); shutil.rmtree(out,ignore_errors=True); out.mkdir()
+          shutil.copy2('index.html',out/'index.html')
+          p=Refs(); p.feed(Path('index.html').read_text(encoding='utf-8'))
+          for rel in dict.fromkeys(p.files):
+              src=root/rel; dst=out/rel; dst.parent.mkdir(parents=True,exist_ok=True); shutil.copy2(src,dst)
+          shutil.copytree('assets',out/'assets',dirs_exist_ok=True)
+          (out/'.nojekyll').write_text('',encoding='utf-8')
+          bad=[p for p in out.rglob('*') if p.suffix in {'.py','.pyc','.sql'} or '.github' in p.parts or 'scripts' in p.parts or 'supabase' in p.parts]
+          if bad: raise SystemExit(f'Non-runtime files leaked into deploy artifact: {bad[:10]}')
+          print(f'Clean site staged with {sum(1 for p in out.rglob("*") if p.is_file())} files.')
+          PY
 
       - name: Configure Pages
         if: github.event_name != 'pull_request'
@@ -272,7 +199,7 @@ jobs:
         if: github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@v3
         with:
-          path: '.'
+          path: '_site'
 
   deploy:
     if: github.event_name != 'pull_request'

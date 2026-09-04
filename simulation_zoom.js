@@ -137,8 +137,23 @@
     });
   }
 
-  const observer=new MutationObserver(()=>bindAll());
+  let bindQueued=false;
+  function scheduleBind(){
+    if(bindQueued)return;bindQueued=true;
+    requestAnimationFrame(()=>{bindQueued=false;bindAll()});
+  }
+  function mutationNeedsBinding(mutations){
+    for(const m of mutations){
+      for(const node of m.addedNodes){
+        if(node.nodeType!==1)continue;
+        if(node.matches?.('.sim-ecg-stage,.sim-review-ecg')||node.querySelector?.('.sim-ecg-stage,.sim-review-ecg'))return true;
+      }
+    }
+    return false;
+  }
+  const observer=new MutationObserver(mutations=>{if(mutationNeedsBinding(mutations))scheduleBind()});
   const start=()=>{bindAll();observer.observe(document.body,{childList:true,subtree:true})};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
-  window.ECG_SIMULATION_ZOOM={bindAll};
+  window.addEventListener('ecg:pagechange',e=>{if(e.detail?.to==='simulados')scheduleBind()});
+  window.ECG_SIMULATION_ZOOM={bindAll,scheduleBind};
 })();

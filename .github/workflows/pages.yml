@@ -47,7 +47,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for f in index.html app.js styles.css release_features.css i18n.js english_content.js english_content_finalize.js localize_data.js bilingual_ui_fixes.js tutor_bilingual_fix.js real_cases.js study_content.js study_casecoach_features.js simulation_features.js supabase/simulation_suite.sql supabase/functions/ecg-tutor/index.ts; do
+          for f in index.html app.js styles.css release_features.css i18n.js english_content.js english_content_finalize.js localize_data.js bilingual_ui_fixes.js tutor_bilingual_fix.js real_cases.js study_content.js study_casecoach_features.js simulation_features.js simulation_zoom.js supabase/simulation_suite.sql supabase/functions/ecg-tutor/index.ts; do
             test -f "$f" || { echo "Missing required file: $f"; exit 1; }
           done
 
@@ -66,12 +66,14 @@ jobs:
           node --check study_content.js
           node --check study_casecoach_features.js
           node --check simulation_features.js
+          node --check simulation_zoom.js
           python -m py_compile scripts/generate_ecg_svgs.py scripts/generate_lesson_pdfs.py scripts/patch_i18n.py scripts/patch_app_language.py scripts/patch_mobile_zoom.py
 
           grep -q "english_content.js" index.html
           grep -q "english_content_finalize.js" index.html
           grep -q "bilingual_ui_fixes.js" index.html
           grep -q "tutor_bilingual_fix.js" index.html
+          grep -q "simulation_zoom.js" index.html
           grep -q "touchDistance" app.js
           grep -q "touchAction='none'" app.js
           grep -q "CardioTutor AI" tutor_bilingual_fix.js
@@ -90,6 +92,17 @@ jobs:
           grep -q "Revisar questões" simulation_features.js
           grep -q "Review questions" simulation_features.js
           ! grep -qiE 'pontos fortes|pontos fracos|precisa revisar|strengths|weaknesses|study recommendation' simulation_features.js
+
+          # Practice exam ECG viewer must mirror Training interactions on mouse and touch.
+          grep -q "addEventListener('wheel'" simulation_zoom.js
+          grep -q "addEventListener('mousedown'" simulation_zoom.js
+          grep -q "addEventListener('dblclick'" simulation_zoom.js
+          grep -q "touchstart" simulation_zoom.js
+          grep -q "touchmove" simulation_zoom.js
+          grep -q "distance(a,b)" simulation_zoom.js
+          grep -q "requestFullscreen" simulation_zoom.js
+          grep -q "MAX_ZOOM=8" simulation_zoom.js
+          grep -q "sim-review-ecg" simulation_zoom.js
 
           node - <<'NODE'
           const fs=require('fs'),vm=require('vm');

@@ -230,6 +230,7 @@ function shell(){
         ${navButton('treinar','⌁','Treinar ECG')}
         ${navButton('trilha','▤','Trilha de estudo')}
         ${navButton('simulados','◫','Simulados')}
+        ${navButton('desempenho','↗','Meu Desempenho')}
         ${navButton('tutor','✦','Tutor IA')}
         ${admin?navButton('admin','⚙','Admin','admin-only'):''}
       </nav>
@@ -258,6 +259,7 @@ function showPage(id){
   document.querySelectorAll('[data-page]').forEach(b=>b.classList.toggle('active',b.dataset.page===id));
   const meta={dashboard:['Dashboard','Seu progresso e próximos passos.'],treinar:['Treinar ECG','Interpretação guiada com feedback imediato.'],trilha:['Trilha de estudo','Do básico ao avançado em módulos progressivos.'],simulados:['Simulados','Avalie seu domínio com questões cronometradas.'],desempenho:['Meu Desempenho','Acompanhe sua evolução e transforme resultados em um plano de estudo.'],tutor:['Tutor IA','Tire dúvidas sobre conceitos e raciocínio eletrocardiográfico.'],admin:['Painel administrativo','Gerencie ECGs e conteúdo educacional.']};
   const m=meta[id]||meta.dashboard;document.getElementById('pageTitle').textContent=m[0];document.getElementById('pageSubtitle').textContent=m[1];
+  if(id==='desempenho')window.ECG_PERFORMANCE?.activate?.();
   window.scrollTo({top:0,behavior:'smooth'});
 }
 

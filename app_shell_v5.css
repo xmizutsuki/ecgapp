@@ -1,36 +1,43 @@
-/* ECG Lab — app shell v5.
-   Desktop/tablet is one continuous document: the browser owns vertical scrolling,
-   the navigation rail stays sticky, and the scrollbar lives at the viewport edge.
-   Mobile keeps the existing bottom navigation and natural document scrolling. */
+/* ECG Lab — app shell v5 stabilized.
+   Desktop/tablet uses one browser-owned document scrollbar at the far-right edge.
+   The navigation rail is fixed to the viewport (not sticky), which prevents it
+   from drifting or ending partway down long pages. Mobile keeps natural scrolling. */
 
 @media (min-width:721px){
-  html,
-  body{
+  /* One and only one vertical scrolling surface. Keeping body out of the scroll
+     chain avoids browser-specific sticky/scroll-container behavior on Windows. */
+  html{
     width:100%;
     min-height:100%;
     height:auto!important;
     overflow-x:hidden!important;
     overflow-y:auto!important;
     scrollbar-width:thin;
-    scrollbar-color:rgba(13,28,47,.72) transparent;
+    scrollbar-color:rgba(10,26,43,.86) transparent;
   }
 
-  /* Near-invisible scrollbar: the thumb uses the same deep navy family as the
-     page, so it remains usable without reading as a separate UI element. */
-  html::-webkit-scrollbar,
-  body::-webkit-scrollbar{width:6px;height:6px}
-  html::-webkit-scrollbar-track,
-  body::-webkit-scrollbar-track{background:transparent}
-  html::-webkit-scrollbar-thumb,
-  body::-webkit-scrollbar-thumb{
-    background:rgba(13,28,47,.76);
+  body{
+    width:100%;
+    min-height:100dvh;
+    height:auto!important;
+    overflow:visible!important;
+  }
+
+  /* Near-invisible viewport scrollbar. It intentionally uses the same navy family
+     as the page and removes native arrow buttons so it does not read as a divider. */
+  html::-webkit-scrollbar{width:8px;height:8px}
+  html::-webkit-scrollbar-track{background:transparent}
+  html::-webkit-scrollbar-button{display:none;width:0;height:0}
+  html::-webkit-scrollbar-corner{background:transparent}
+  html::-webkit-scrollbar-thumb{
+    min-height:48px;
+    background:rgba(10,26,43,.88);
     border-radius:999px;
-    border:1px solid rgba(6,17,30,.34);
+    border:2px solid transparent;
     background-clip:padding-box;
   }
-  html::-webkit-scrollbar-thumb:hover,
-  body::-webkit-scrollbar-thumb:hover{
-    background:rgba(17,36,58,.9);
+  html::-webkit-scrollbar-thumb:hover{
+    background:rgba(16,39,62,.94);
     background-clip:padding-box;
   }
 
@@ -41,28 +48,37 @@
     overflow:visible!important;
   }
 
+  /* Fixed rail + document content. Do not rely on CSS sticky here: the previous
+     implementation could attach to the wrong scrolling ancestor and visibly end
+     after the user scrolled, which is exactly the failure shown in the report. */
   .shell{
+    display:block!important;
     width:100%;
     min-height:100dvh!important;
     height:auto!important;
     overflow:visible!important;
-    align-items:start;
   }
 
-  /* The rail remains visually fixed while the document scrolls as one page. */
   .sidebar{
-    position:sticky!important;
-    inset:auto!important;
+    display:flex!important;
+    position:fixed!important;
+    left:0!important;
+    right:auto!important;
     top:0!important;
-    align-self:start!important;
+    bottom:0!important;
+    width:250px!important;
     height:100dvh!important;
     min-height:0!important;
+    margin:0!important;
+    align-self:auto!important;
     overflow:hidden!important;
+    z-index:40!important;
   }
 
   .sidebar .brand{flex:0 0 auto}
 
-  /* Only the menu itself may scroll when the viewport is unusually short. */
+  /* The menu may scroll internally only on unusually short displays. Its scrollbar
+     remains hidden; the user still gets wheel/touch scrolling inside the rail. */
   .sidebar .nav{
     flex:1 1 auto;
     min-height:0;
@@ -79,33 +95,56 @@
     min-width:0;
   }
 
-  /* Main is content, not a nested scroll container. */
+  /* Main content owns no scrollbar. Its left offset exactly matches the fixed rail,
+     so long pages remain one continuous document without overlap or a fake split. */
   .main{
     position:relative;
-    width:100%!important;
+    box-sizing:border-box!important;
+    width:calc(100% - 250px)!important;
     max-width:none!important;
-    margin:0!important;
+    margin:0 0 0 250px!important;
     height:auto!important;
     min-height:100dvh!important;
     min-width:0!important;
     overflow:visible!important;
   }
 
-  /* Keep a comfortable reading width without creating a second visual column. */
   .main>.topbar,
   .main>.page{
+    box-sizing:border-box;
     width:100%;
     max-width:1500px;
+    min-width:0;
     margin-left:auto;
     margin-right:auto;
   }
 
-  .page{min-width:0}
+  .page,
+  .page>*{
+    min-width:0;
+  }
 
-  /* Keep the Tutor clear of the browser scrollbar at the far edge. */
+  /* Defensive horizontal-overflow rules for feature layouts. Dynamic feature CSS
+     is injected before this stylesheet, so these rules safely win when required. */
+  .cat-home,
+  .cat-section,
+  .cat-history-list,
+  .cat-history-item,
+  .sim-home,
+  .sim-section,
+  .sim-history-list,
+  .sim-history-item,
+  .perf-page,
+  .study-detail-grid,
+  .case-layout{
+    max-width:100%;
+    min-width:0;
+  }
+
+  /* Keep the Tutor clear of the viewport scrollbar at the far edge. */
   .ft2-fab{right:24px!important}
 
-  /* Beta feedback belongs to the navigation footer, not over the user card. */
+  /* Beta feedback belongs to the navigation footer, never over the user card. */
   .sidebar-footer .beta-feedback-launcher{
     position:static!important;
     inset:auto!important;
@@ -143,7 +182,18 @@
   }
 }
 
+/* The base UI collapses the rail at 1100px. Mirror that exact width in the main
+   offset so there is never an overlap or an empty 250px gutter. */
 @media (min-width:721px) and (max-width:1100px){
+  .sidebar{
+    width:84px!important;
+  }
+
+  .main{
+    width:calc(100% - 84px)!important;
+    margin-left:84px!important;
+  }
+
   .sidebar-footer{
     display:flex;
     flex-direction:column;
@@ -174,6 +224,28 @@
   }
 }
 
+/* A 250px desktop rail reduces the actual content width. Several legacy feature
+   breakpoints were written against the full viewport, so they stayed in a 4/5/6
+   column desktop layout even when only ~900px remained. Shift those layouts early
+   enough to prevent cards and buttons from being clipped off the right edge. */
+@media (min-width:1101px) and (max-width:1450px){
+  .cat-history-item{
+    grid-template-columns:minmax(0,1fr) auto!important;
+  }
+  .cat-history-item>.badge{justify-self:start}
+  .cat-history-item>.btn{justify-self:end}
+
+  .perf-kpis{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+  .perf-plan-list{grid-template-columns:1fr!important}
+  .perf-two{grid-template-columns:1fr!important}
+  .perf-area-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+
+  .clinical-cases-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+  .study-detail-grid,
+  .case-layout{grid-template-columns:1fr!important}
+  .case-question{position:static!important}
+}
+
 @media (max-width:720px){
   html,
   body{
@@ -191,12 +263,18 @@
   }
 
   .shell{
+    display:block!important;
     height:auto!important;
     min-height:100dvh!important;
     overflow:visible!important;
   }
 
+  .sidebar{display:none!important}
+
   .main{
+    width:100%!important;
+    max-width:none!important;
+    margin:0!important;
     height:auto!important;
     min-height:0!important;
     overflow:visible!important;

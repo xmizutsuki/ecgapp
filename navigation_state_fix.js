@@ -48,9 +48,6 @@
     requestAnimationFrame(()=>requestAnimationFrame(()=>{
       if(!pendingMobileRestore||pendingMobileRestore!==pending||currentPage()!==pending.page)return;
       const now=currentScroll();
-      /* A shell rebuild can collapse the document to y=0 before content is reinserted.
-         Restore only when a large, implausible upward jump occurred. Never fight a
-         normal user scroll that remained near the previous position. */
       const collapsed=pending.y>120&&now<Math.min(100,pending.y*.2);
       if(collapsed)instantScroll(pending.y);
       scrollByPage.set(pending.page,collapsed?pending.y:now);
@@ -113,5 +110,5 @@
   }
 
   try{if('scrollRestoration'in history)history.scrollRestoration='manual'}catch{}
-  window.ECG_NAVIGATION={version:'7.0.0',revision:'7.0.0-mobile-shell-preserve',navigate,currentPage,remember,restore,scrollTop,mainScroller,get restoring(){return restoring},get touchActive(){return touchActive}};
+  window.ECG_NAVIGATION={version:'5.0.0',revision:'7.0.0-mobile-shell-preserve',navigate,currentPage,remember,restore,scrollTop,mainScroller,get restoring(){return restoring},get touchActive(){return touchActive}};
 })();

@@ -1,16 +1,17 @@
-/* ECG Lab — navigation/session stability v5.
+/* ECG Lab — navigation/session stability v6.
    Main-tab changes are view switches, not session exits. Active CAT/practice-exam
    DOM is preserved across Supabase shell refreshes, legacy navigation handlers are
-   blocked from firing a second time, and scroll restoration follows the single
-   browser viewport scrollbar while the sidebar remains sticky. */
+   blocked from firing twice, and mobile scrolling is never overridden mid-gesture. */
 (function(){
   'use strict';
 
   const scrollByPage=new Map();
   let restoring=false;
   let shellPreserve=null;
+  let touchActive=false;
 
   const isEn=()=>window.ECG_LANG==='en';
+  const isMobile=()=>Math.max(window.innerWidth||0,document.documentElement.clientWidth||0)<=720;
   const meta=()=>isEn()?{
     dashboard:['Dashboard','Your progress and next steps.'],
     treinar:['ECG Training','Guided interpretation with immediate feedback.'],
@@ -29,30 +30,12 @@
     admin:['Painel administrativo','Gerencie ECGs e conteúdo educacional.']
   };
 
-  function statePage(){
-    return (typeof state!=='undefined'&&state?.page)||'dashboard';
-  }
-
-  function domPage(){
-    return document.querySelector('.page.active')?.id||null;
-  }
-
-  function currentPage(){
-    return domPage()||statePage();
-  }
-
-  function mainScroller(){
-    // v5 deliberately uses the document viewport as the only page scroller.
-    return null;
-  }
-
-  function currentScroll(){
-    return Math.max(0,window.scrollY||document.documentElement.scrollTop||0);
-  }
-
-  function remember(page){
-    if(page&&document.getElementById(page))scrollByPage.set(page,currentScroll());
-  }
+  function statePage(){return (typeof state!=='undefined'&&state?.page)||'dashboard'}
+  function domPage(){return document.querySelector('.page.active')?.id||null}
+  function currentPage(){return domPage()||statePage()}
+  function mainScroller(){return null}
+  function currentScroll(){return Math.max(0,window.scrollY||document.documentElement.scrollTop||document.body.scrollTop||0)}
+  function remember(page){if(page&&document.getElementById(page))scrollByPage.set(page,currentScroll())}
 
   function instantScroll(y){
     const top=Math.max(0,Number(y)||0);
@@ -63,15 +46,14 @@
     root.style.scrollBehavior=previous;
   }
 
-  function scrollTop({behavior='auto'}={}){
-    window.scrollTo({top:0,left:0,behavior});
-  }
+  function scrollTop({behavior='auto'}={}){window.scrollTo({top:0,left:0,behavior})}
 
-  function restore(page){
+  function restore(page,{allowDuringTouch=false}={}){
+    if(isMobile()&&touchActive&&!allowDuringTouch)return;
     const y=scrollByPage.get(page)||0;
     restoring=true;
     requestAnimationFrame(()=>{
-      instantScroll(y);
+      if(!(isMobile()&&touchActive&&!allowDuringTouch))instantScroll(y);
       restoring=false;
     });
   }
@@ -79,10 +61,8 @@
   function applyPage(id){
     if(!document.getElementById(id))id='dashboard';
     if(typeof state!=='undefined')state.page=id;
-
     document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.id===id));
     document.querySelectorAll('[data-page]').forEach(b=>b.classList.toggle('active',b.dataset.page===id));
-
     const m=meta()[id]||meta().dashboard;
     const title=document.getElementById('pageTitle');
     const subtitle=document.getElementById('pageSubtitle');
@@ -94,29 +74,20 @@
   function navigate(id,{force=false,restoreScroll=true}={}){
     const from=currentPage();
     if(!document.getElementById(id))id='dashboard';
-
     if(!force&&id===from&&domPage()===id)return;
     if(id!==from)remember(from);
-
     id=applyPage(id);
     if(id==='desempenho')window.ECG_PERFORMANCE?.activate?.();
-    if(restoreScroll)restore(id);
-
+    if(restoreScroll)restore(id,{allowDuringTouch:false});
     window.dispatchEvent(new CustomEvent('ecg:pagechange',{detail:{from,to:id}}));
   }
 
-  /*
-   * Legacy feature layers installed their own showPage wrappers. Some of those
-   * wrappers interpret leaving Treinar ECG as an explicit "save and exit" action.
-   * This runtime is loaded last and is the single owner of main-tab navigation.
-   */
   window.showPage=navigate;
 
-  /*
-   * Stop the click before old per-button onclick handlers run. Without this, one
-   * click can execute both this navigator and a legacy showPage wrapper, which is
-   * what caused an active question to be replaced by the training home screen.
-   */
+  document.addEventListener('touchstart',()=>{touchActive=true},{passive:true,capture:true});
+  document.addEventListener('touchend',()=>{touchActive=false},{passive:true,capture:true});
+  document.addEventListener('touchcancel',()=>{touchActive=false},{passive:true,capture:true});
+
   document.addEventListener('click',e=>{
     const button=e.target.closest?.('[data-page]');
     if(!button)return;
@@ -127,13 +98,6 @@
     navigate(target);
   },true);
 
-  /*
-   * Supabase emits auth lifecycle events such as INITIAL_SESSION/TOKEN_REFRESHED.
-   * app.js may rebuild the entire shell for those events. Preserve the live runner
-   * nodes (and their event handlers) across same-user shell rebuilds, and suppress
-   * renderTraining/renderSims while those nodes are detached so runtime state is
-   * not reset to the corresponding home screen.
-   */
   const originalShell=typeof window.shell==='function'?window.shell:null;
   const originalRenderTraining=typeof window.renderTraining==='function'?window.renderTraining:null;
   const originalRenderSims=typeof window.renderSims==='function'?window.renderSims:null;
@@ -170,8 +134,10 @@
       const nextUserKey=userKey();
       const sameUser=!!nextUserKey&&nextUserKey===renderedUserKey;
       const targetPage=statePage();
+      const beforePage=currentPage();
+      const beforeY=currentScroll();
 
-      remember(currentPage());
+      remember(beforePage);
       shellPreserve=sameUser?{
         treinar:detachRunner('treinar','.cat-runner'),
         simulados:detachRunner('simulados','.sim-runner-shell')
@@ -192,23 +158,36 @@
         shellPreserve=null;
         renderedUserKey=nextUserKey;
         applyPage(targetPage);
-        restore(targetPage);
+
+        /* On phones, browser chrome changes viewport height while the finger is
+           scrolling. A same-page auth/shell refresh must never schedule a stale
+           requestAnimationFrame scroll restoration, because that is perceived as
+           the page snapping back toward the top. Let the native viewport keep its
+           current position instead. Desktop retains per-tab restoration. */
+        if(!isMobile()){
+          restore(targetPage);
+        }else if(targetPage!==beforePage&&!touchActive){
+          scrollByPage.set(targetPage,scrollByPage.get(targetPage)||0);
+          restore(targetPage);
+        }else{
+          scrollByPage.set(targetPage,beforeY);
+        }
       }
       return result;
     };
   }
 
-  // Browser history should not fight the app's own per-tab position restoration.
   try{if('scrollRestoration'in history)history.scrollRestoration='manual'}catch{}
 
   window.ECG_NAVIGATION={
-    version:'5.0.0',
+    version:'6.0.0',
     navigate,
     currentPage,
     remember,
     restore,
     scrollTop,
     mainScroller,
-    get restoring(){return restoring}
+    get restoring(){return restoring},
+    get touchActive(){return touchActive}
   };
 })();

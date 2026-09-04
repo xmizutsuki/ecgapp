@@ -61,20 +61,51 @@
     min-width:0;
   }
 
-  /* Only this region moves vertically. */
+  /* Only this region moves vertically. The scroller itself must fill the whole
+     grid track; the old max-width/margin from styles.css belongs to the content,
+     not to the scrolling surface. Otherwise the scrollbar appears in the middle
+     of the app with an empty strip to its right on wide screens. */
   .main{
     position:relative;
+    width:100%!important;
+    max-width:none!important;
+    margin:0!important;
     height:100dvh!important;
+    min-width:0!important;
     min-height:0!important;
     overflow-y:auto!important;
     overflow-x:hidden!important;
     overscroll-behavior-y:contain;
-    scrollbar-gutter:stable;
+    scrollbar-width:thin;
+    scrollbar-color:rgba(145,167,196,.32) transparent;
     -webkit-overflow-scrolling:touch;
+  }
+
+  .main::-webkit-scrollbar{width:7px;height:7px}
+  .main::-webkit-scrollbar-track{background:transparent}
+  .main::-webkit-scrollbar-thumb{
+    background:rgba(145,167,196,.28);
+    border-radius:999px;
+    border:2px solid transparent;
+    background-clip:padding-box;
+  }
+  .main::-webkit-scrollbar-thumb:hover{background:rgba(145,167,196,.42);background-clip:padding-box}
+
+  /* Preserve the original comfortable reading width while keeping the actual
+     scrollbar at the viewport edge. */
+  .main>.topbar,
+  .main>.page{
+    width:100%;
+    max-width:1500px;
+    margin-left:auto;
+    margin-right:auto;
   }
 
   .main:focus{outline:none}
   .page{min-width:0}
+
+  /* Keep the floating tutor comfortably clear of the content scrollbar. */
+  .ft2-fab{right:22px!important}
 
   /* Keep the beta report action inside the rail instead of covering the user card. */
   .sidebar-footer .beta-feedback-launcher{

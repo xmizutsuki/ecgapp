@@ -29,14 +29,14 @@ create policy "beta_feedback_insert_own"
   on public.beta_feedback
   for insert
   to authenticated
-  with check (auth.uid() = user_id);
+  with check ((select auth.uid()) = user_id);
 
 drop policy if exists "beta_feedback_select_own" on public.beta_feedback;
 create policy "beta_feedback_select_own"
   on public.beta_feedback
   for select
   to authenticated
-  using (auth.uid() = user_id);
+  using ((select auth.uid()) = user_id);
 
 -- Administrative review is intentionally delegated to the existing admin model.
 -- Do not grant anonymous read/write access to this table.

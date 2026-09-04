@@ -42,6 +42,11 @@ body .sim-modal-actions .btn,body .cat-modal-actions .btn{min-height:42px}
 .cat-line.ability,.sim-chart path:not(.sim-grid){stroke-dasharray:1400;stroke-dashoffset:1400;animation:uiDrawLine 700ms var(--ease-out) 60ms forwards}
 .cat-dot{opacity:0;animation:uiDotIn 240ms var(--ease-spring) 560ms forwards}
 
+/* AI feedback: text fades in, no perpetual spinner after completion. */
+.case-ai-status:not(:empty):before{display:none!important}
+.case-ai-status:not(:empty){animation:uiReveal var(--motion-base) var(--ease-spring) both}
+.case-ai-feedback:not(.hidden){animation:uiReveal var(--motion-page) var(--ease-spring) both}
+
 /* Result/history cards gain depth but not continuous motion. */
 .cat-history-item,.sim-history-item,.sim-continue-card,.cat-review-item,.sim-review-item{transition:transform var(--motion-fast) var(--ease-spring),border-color var(--motion-fast) ease,box-shadow var(--motion-fast) ease}
 @media(hover:hover) and (pointer:fine){.cat-history-item:hover,.sim-history-item:hover,.sim-continue-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-mid)}}

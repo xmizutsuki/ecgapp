@@ -86,13 +86,18 @@ jobs:
           python -m py_compile scripts/*.py
 
           # Prevent regressions in the current navigation/session architecture.
-          grep -q "version:'3.0.0'" navigation_state_fix.js
+          grep -q "version:'4.0.0'" navigation_state_fix.js
+          grep -q "mainScroller" navigation_state_fix.js
           grep -q "stopImmediatePropagation" navigation_state_fix.js
           grep -q "detachRunner('treinar','.cat-runner')" navigation_state_fix.js
           grep -q "detachRunner('simulados','.sim-runner-shell')" navigation_state_fix.js
           grep -q "ecg:pagechange" navigation_state_fix.js
           ! grep -q '<script src="bilingual_ui_fixes.js"' index.html
           grep -q 'beta_runtime.js' index.html
+          grep -q 'app_shell_v4.css' index.html
+          grep -q 'app_shell_v4.js' index.html
+          grep -q "split-scroll-v4" app_shell_v4.js
+          grep -q "sidebar-footer" app_shell_v4.css
           grep -q '0.9.0-beta.1' config.js
 
           # Core suites remain present and resumable.

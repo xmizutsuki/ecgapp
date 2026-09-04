@@ -35,6 +35,36 @@
     ['Foundation','Fundamental'],['Basic','Básico'],['Intermediate','Intermediário'],['Advanced','Avançado'],['Expert','Especialista']
   ]);
 
+  function dynamicText(s){
+    if(en()){
+      let m;
+      if((m=s.match(/^Nível estimado (\d+) de (\d+)$/i)))return `Estimated level ${m[1]} of ${m[2]}`;
+      if((m=s.match(/^(\d+) questão atual$/i)))return `${m[1]} current question`;
+      if((m=s.match(/^(\d+)% precisão$/i)))return `${m[1]}% accuracy`;
+      if((m=s.match(/^(\d+) sequência$/i)))return `${m[1]} streak`;
+      if((m=s.match(/^ECG adaptativo #(\d+)$/i)))return `Adaptive ECG #${m[1]}`;
+      if((m=s.match(/^CAT • dificuldade (\d+)\/(\d+)$/i)))return `CAT • difficulty ${m[1]}/${m[2]}`;
+      if((m=s.match(/^Nível (\d+)$/i)))return `Level ${m[1]}`;
+      if((m=s.match(/^(\d+) aulas$/i)))return `${m[1]} lessons`;
+      if((m=s.match(/^(\d+) casos$/i)))return `${m[1]} cases`;
+      if((m=s.match(/^Caso (\d+)$/i)))return `Case ${m[1]}`;
+      if((m=s.match(/^Você acertou (\d+) de (\d+) questões\.?$/i)))return `You answered ${m[1]} of ${m[2]} questions correctly.`;
+      return s;
+    }
+    let m;
+    if((m=s.match(/^Estimated level (\d+) of (\d+)$/i)))return `Nível estimado ${m[1]} de ${m[2]}`;
+    if((m=s.match(/^(\d+) current question$/i)))return `${m[1]} questão atual`;
+    if((m=s.match(/^(\d+)% accuracy$/i)))return `${m[1]}% precisão`;
+    if((m=s.match(/^(\d+) streak$/i)))return `${m[1]} sequência`;
+    if((m=s.match(/^Adaptive ECG #(\d+)$/i)))return `ECG adaptativo #${m[1]}`;
+    if((m=s.match(/^CAT • difficulty (\d+)\/(\d+)$/i)))return `CAT • dificuldade ${m[1]}/${m[2]}`;
+    if((m=s.match(/^Level (\d+)$/i)))return `Nível ${m[1]}`;
+    if((m=s.match(/^(\d+) lessons$/i)))return `${m[1]} aulas`;
+    if((m=s.match(/^(\d+) cases$/i)))return `${m[1]} casos`;
+    if((m=s.match(/^Case (\d+)$/i)))return `Caso ${m[1]}`;
+    return s;
+  }
+
   function translateExactText(root=document.body){
     if(!root) return;
     const map=en()?EN:PT;
@@ -45,11 +75,11 @@
       if(node.parentElement && ['SCRIPT','STYLE','CODE'].includes(node.parentElement.tagName))continue;
       const raw=node.nodeValue||'';const trimmed=raw.trim();
       if(!trimmed)continue;
-      if(map.has(trimmed)) node.nodeValue=raw.replace(trimmed,map.get(trimmed));
+      const replacement=map.get(trimmed) ?? dynamicText(trimmed);
+      if(replacement!==trimmed)node.nodeValue=raw.replace(trimmed,replacement);
     }
   }
 
-  // Keep page titles/subtitles deterministic instead of relying on a later text pass.
   if(typeof showPage==='function'){
     window.__ecgOriginalShowPage=showPage;
     showPage=function(id){
@@ -76,7 +106,6 @@
     };
   }
 
-  // Adaptive level labels must also respect the selected language.
   if(typeof adaptiveLevelLabel==='function'){
     adaptiveLevelLabel=function(){
       const d=clamp(Math.round(state.adaptive.ability),1,adaptiveMaxDifficulty());
@@ -96,8 +125,6 @@
   });
 
   window.addEventListener('load',async()=>{
-    // Defensive recovery: if a localization/data-loading regression ever leaves
-    // the training library empty, reload it once and redraw the app.
     try{
       if(typeof state!=='undefined' && (!state.questions?.length || !state.ecgCases?.length) && typeof loadRealLibrary==='function'){
         state.libraryError=null;

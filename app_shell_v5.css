@@ -1,0 +1,238 @@
+/* ECG Lab — app shell v5.
+   Desktop/tablet is one continuous document: the browser owns vertical scrolling,
+   the navigation rail stays sticky, and the scrollbar lives at the viewport edge.
+   Mobile keeps the existing bottom navigation and natural document scrolling. */
+
+@media (min-width:721px){
+  html,
+  body{
+    width:100%;
+    min-height:100%;
+    height:auto!important;
+    overflow-x:hidden!important;
+    overflow-y:auto!important;
+    scrollbar-width:thin;
+    scrollbar-color:rgba(145,167,196,.32) transparent;
+  }
+
+  html::-webkit-scrollbar,
+  body::-webkit-scrollbar{width:7px;height:7px}
+  html::-webkit-scrollbar-track,
+  body::-webkit-scrollbar-track{background:transparent}
+  html::-webkit-scrollbar-thumb,
+  body::-webkit-scrollbar-thumb{
+    background:rgba(145,167,196,.28);
+    border-radius:999px;
+    border:2px solid transparent;
+    background-clip:padding-box;
+  }
+  html::-webkit-scrollbar-thumb:hover,
+  body::-webkit-scrollbar-thumb:hover{
+    background:rgba(145,167,196,.42);
+    background-clip:padding-box;
+  }
+
+  #app{
+    width:100%;
+    min-height:100dvh;
+    height:auto!important;
+    overflow:visible!important;
+  }
+
+  .shell{
+    width:100%;
+    min-height:100dvh!important;
+    height:auto!important;
+    overflow:visible!important;
+    align-items:start;
+  }
+
+  /* The rail remains visually fixed while the document scrolls as one page. */
+  .sidebar{
+    position:sticky!important;
+    inset:auto!important;
+    top:0!important;
+    align-self:start!important;
+    height:100dvh!important;
+    min-height:0!important;
+    overflow:hidden!important;
+  }
+
+  .sidebar .brand{flex:0 0 auto}
+
+  /* Only the menu itself may scroll when the viewport is unusually short. */
+  .sidebar .nav{
+    flex:1 1 auto;
+    min-height:0;
+    overflow-y:auto;
+    overflow-x:hidden;
+    overscroll-behavior:contain;
+    scrollbar-width:none;
+  }
+  .sidebar .nav::-webkit-scrollbar{display:none}
+
+  .sidebar-footer{
+    flex:0 0 auto;
+    width:100%;
+    min-width:0;
+  }
+
+  /* Main is content, not a nested scroll container. */
+  .main{
+    position:relative;
+    width:100%!important;
+    max-width:none!important;
+    margin:0!important;
+    height:auto!important;
+    min-height:100dvh!important;
+    min-width:0!important;
+    overflow:visible!important;
+  }
+
+  /* Keep a comfortable reading width without creating a second visual column. */
+  .main>.topbar,
+  .main>.page{
+    width:100%;
+    max-width:1500px;
+    margin-left:auto;
+    margin-right:auto;
+  }
+
+  .page{min-width:0}
+
+  /* Keep the Tutor clear of the browser scrollbar at the far edge. */
+  .ft2-fab{right:24px!important}
+
+  /* Beta feedback belongs to the navigation footer, not over the user card. */
+  .sidebar-footer .beta-feedback-launcher{
+    position:static!important;
+    inset:auto!important;
+    z-index:auto!important;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    width:100%;
+    max-width:none;
+    min-height:34px;
+    margin:8px 0 0;
+    padding:7px 10px;
+    border-color:rgba(145,167,196,.16);
+    border-radius:11px;
+    background:rgba(255,255,255,.025);
+    color:var(--muted,#91a7c4);
+    box-shadow:none;
+    backdrop-filter:none;
+    -webkit-backdrop-filter:none;
+    font-size:10.5px;
+    font-weight:600;
+    letter-spacing:0;
+  }
+
+  .sidebar-footer .beta-feedback-launcher:hover{
+    transform:none;
+    background:rgba(255,255,255,.05);
+    border-color:rgba(76,224,179,.22);
+    color:#cbeee4;
+  }
+
+  .sidebar-footer .beta-version{
+    margin-top:7px;
+    text-align:left;
+  }
+}
+
+@media (min-width:721px) and (max-width:1100px){
+  .sidebar-footer{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+  }
+
+  .sidebar-footer .beta-feedback-launcher{
+    width:42px;
+    min-width:42px;
+    height:36px;
+    min-height:36px;
+    padding:0;
+    font-size:0!important;
+  }
+
+  .sidebar-footer .beta-feedback-launcher::before{
+    content:"⚑";
+    font-size:14px;
+    line-height:1;
+  }
+
+  .sidebar-footer .beta-version{
+    max-width:58px;
+    text-align:center;
+    overflow-wrap:anywhere;
+    font-size:8px;
+    line-height:1.3;
+  }
+}
+
+@media (max-width:720px){
+  html,
+  body{
+    width:100%;
+    min-height:100%;
+    height:auto;
+    overflow-x:hidden!important;
+    overflow-y:auto!important;
+  }
+
+  #app{
+    height:auto;
+    min-height:100dvh;
+    overflow:visible;
+  }
+
+  .shell{
+    height:auto!important;
+    min-height:100dvh!important;
+    overflow:visible!important;
+  }
+
+  .main{
+    height:auto!important;
+    min-height:0!important;
+    overflow:visible!important;
+  }
+
+  .topbar .beta-feedback-launcher{
+    position:static!important;
+    inset:auto!important;
+    z-index:auto!important;
+    width:38px;
+    min-width:38px;
+    height:38px;
+    max-width:none;
+    padding:0;
+    margin:0;
+    border-radius:11px;
+    background:rgba(255,255,255,.035);
+    border-color:rgba(255,255,255,.08);
+    color:var(--muted,#91a7c4);
+    box-shadow:none;
+    backdrop-filter:none;
+    -webkit-backdrop-filter:none;
+    font-size:0!important;
+  }
+
+  .topbar .beta-feedback-launcher::before{
+    content:"⚑";
+    font-size:14px;
+    line-height:1;
+  }
+
+  .topbar .beta-feedback-launcher:hover{
+    transform:none;
+    background:rgba(255,255,255,.06);
+    border-color:rgba(76,224,179,.2);
+  }
+}
+
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+}

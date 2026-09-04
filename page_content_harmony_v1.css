@@ -1,0 +1,118 @@
+/* ECG Lab — page content harmony v1.
+   Rebalances the remaining in-page headings after redundant shell metadata was removed. */
+
+/* The topbar now exists primarily for actions; keep it compact so content begins naturally. */
+.main.hide-shell-page-meta > .topbar{
+  min-height:44px!important;
+  padding-top:6px!important;
+  padding-bottom:6px!important;
+  margin-bottom:2px!important;
+}
+.main.hide-shell-page-meta > .page.active{
+  margin-top:0!important;
+}
+
+/* Shared heading rhythm: eyebrow -> title -> helper copy -> first content block. */
+.cat-home-head,
+.sim-home-header,
+.perf-head{
+  box-sizing:border-box;
+  padding:6px 4px 2px!important;
+}
+
+.cat-home-head > div:first-child,
+.sim-home-header > div:first-child,
+.perf-head > div:first-child{
+  min-width:0;
+}
+
+.cat-home-head h2,
+.sim-home-header h2,
+.perf-head h2{
+  margin:5px 0 4px!important;
+  font-size:clamp(28px,2.2vw,34px)!important;
+  line-height:1.08!important;
+  letter-spacing:-.035em!important;
+}
+
+.cat-home-head p,
+.sim-home-header p,
+.perf-head p{
+  margin:0!important;
+  max-width:760px!important;
+  color:var(--muted)!important;
+  line-height:1.5!important;
+}
+
+/* Keep the heading visually attached to the page body instead of floating on its own. */
+.cat-home{gap:14px!important}
+.cat-home-head + .cat-setup{margin-top:-2px!important}
+
+.sim-home{gap:18px!important}
+.sim-home-header{align-items:flex-end!important}
+.sim-home-header + .sim-section{margin-top:0!important}
+
+.perf-page{gap:18px!important}
+.perf-head{align-items:flex-end!important}
+.perf-head + .perf-mastery{margin-top:-2px!important}
+
+/* Dashboard and study path begin directly with substantive content, so remove leftover top air. */
+#dashboard.page.active > :first-child,
+#trilha.page.active > :first-child{
+  margin-top:0!important;
+}
+
+/* Keep section transitions consistent after the tighter intro area. */
+.cat-section,
+.sim-section{
+  scroll-margin-top:16px;
+}
+
+@media (max-width:900px){
+  .cat-home-head,
+  .sim-home-header,
+  .perf-head{
+    padding:4px 2px 0!important;
+  }
+  .cat-home-head h2,
+  .sim-home-header h2,
+  .perf-head h2{
+    font-size:28px!important;
+  }
+}
+
+@media (max-width:720px){
+  .main.hide-shell-page-meta > .topbar{
+    min-height:48px!important;
+    padding-top:5px!important;
+    padding-bottom:5px!important;
+    margin-bottom:0!important;
+  }
+  .cat-home,
+  .sim-home,
+  .perf-page{
+    gap:14px!important;
+  }
+  .cat-home-head,
+  .sim-home-header,
+  .perf-head{
+    padding:2px 0 0!important;
+    gap:10px!important;
+  }
+  .cat-home-head h2,
+  .sim-home-header h2,
+  .perf-head h2{
+    font-size:26px!important;
+    margin-top:4px!important;
+  }
+  .cat-home-head p,
+  .sim-home-header p,
+  .perf-head p{
+    font-size:13px!important;
+    line-height:1.45!important;
+  }
+  .cat-home-head + .cat-setup,
+  .perf-head + .perf-mastery{
+    margin-top:0!important;
+  }
+}

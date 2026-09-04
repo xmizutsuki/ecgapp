@@ -182,10 +182,27 @@ jobs:
           PY
 
           # Public frontend may contain a publishable Supabase key, but never a
-          # service-role/secret key or a provider API secret.
-          ! grep -RniE 'sb_secret_|service[_ -]?role[_ -]?key|OPENAI_API_KEY[[:space:]]*[:=][[:space:]]*["'"'][^"'"']+|GROQ_API_KEY[[:space:]]*[:=][[:space:]]*["'"'][^"'"']+|BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY' -- *.js *.html *.css 2>/dev/null || {
-            echo 'Potential frontend secret detected.'; exit 1;
-          }
+          # service-role/secret key, provider secret, or private key. Python avoids
+          # fragile shell quoting in this security-critical check.
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          patterns=[
+              re.compile(r'sb_secret_',re.I),
+              re.compile(r'service[_ -]?role[_ -]?key',re.I),
+              re.compile(r'OPENAI_API_KEY\s*[:=]\s*["\'][^"\']+',re.I),
+              re.compile(r'GROQ_API_KEY\s*[:=]\s*["\'][^"\']+',re.I),
+              re.compile(r'BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY',re.I),
+          ]
+          bad=[]
+          for ext in ('*.js','*.html','*.css'):
+              for path in Path('.').glob(ext):
+                  text=path.read_text(encoding='utf-8',errors='ignore')
+                  if any(p.search(text) for p in patterns): bad.append(str(path))
+          if bad: raise SystemExit(f'Potential frontend secret detected: {bad}')
+          print('Frontend secret scan passed.')
+          PY
 
           ! grep -RniE 'registro clínico real|ECG real de paciente|real patient ECG' index.html app.js study_casecoach_features.js training_features.js performance_features.js floating_tutor_v2.js README.md DATA_SOURCES.md || {
             echo 'Found wording that may incorrectly imply synthetic tracings are real patient ECGs.'; exit 1;

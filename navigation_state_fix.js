@@ -1,7 +1,8 @@
-/* ECG Lab — navigation/session stability v3.
+/* ECG Lab — navigation/session stability v4.
    Main-tab changes are view switches, not session exits. Active CAT/practice-exam
    DOM is preserved across Supabase shell refreshes, legacy navigation handlers are
-   blocked from firing a second time, and scroll restoration is instantaneous. */
+   blocked from firing a second time, and scroll restoration follows the actual
+   content scroller instead of moving the fixed sidebar. */
 (function(){
   'use strict';
 
@@ -40,7 +41,16 @@
     return domPage()||statePage();
   }
 
+  function mainScroller(){
+    const main=document.querySelector('.main');
+    if(!main)return null;
+    if(window.matchMedia?.('(max-width:720px)').matches)return null;
+    return main;
+  }
+
   function currentScroll(){
+    const main=mainScroller();
+    if(main)return Math.max(0,main.scrollTop||0);
     return Math.max(0,window.scrollY||document.documentElement.scrollTop||0);
   }
 
@@ -49,11 +59,26 @@
   }
 
   function instantScroll(y){
+    const top=Math.max(0,Number(y)||0);
+    const main=mainScroller();
+    if(main){
+      const previous=main.style.scrollBehavior;
+      main.style.scrollBehavior='auto';
+      main.scrollTo({top,left:0,behavior:'auto'});
+      main.style.scrollBehavior=previous;
+      return;
+    }
     const root=document.documentElement;
     const previous=root.style.scrollBehavior;
     root.style.scrollBehavior='auto';
-    window.scrollTo(0,Math.max(0,Number(y)||0));
+    window.scrollTo(0,top);
     root.style.scrollBehavior=previous;
+  }
+
+  function scrollTop({behavior='auto'}={}){
+    const main=mainScroller();
+    if(main){main.scrollTo({top:0,left:0,behavior});return}
+    window.scrollTo({top:0,left:0,behavior});
   }
 
   function restore(page){
@@ -191,11 +216,13 @@
   try{if('scrollRestoration'in history)history.scrollRestoration='manual'}catch{}
 
   window.ECG_NAVIGATION={
-    version:'3.0.0',
+    version:'4.0.0',
     navigate,
     currentPage,
     remember,
     restore,
+    scrollTop,
+    mainScroller,
     get restoring(){return restoring}
   };
 })();

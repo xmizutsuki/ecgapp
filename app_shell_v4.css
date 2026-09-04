@@ -1,0 +1,214 @@
+/* ECG Lab — app shell v4.
+   Desktop/tablet uses a fixed navigation rail and a dedicated content scroller.
+   Mobile keeps natural document scrolling with the existing bottom navigation. */
+
+@media (min-width:721px){
+  html,
+  body{
+    width:100%;
+    height:100%;
+    min-height:100%;
+    overflow:hidden!important;
+  }
+
+  #app{
+    width:100%;
+    height:100dvh;
+    min-height:0;
+    overflow:hidden;
+  }
+
+  .shell{
+    width:100%;
+    height:100dvh!important;
+    min-height:0!important;
+    overflow:hidden!important;
+    align-items:stretch;
+  }
+
+  /* Navigation rail: it never follows the page content scroll. */
+  .sidebar{
+    position:relative!important;
+    inset:auto!important;
+    top:auto!important;
+    height:100dvh!important;
+    min-height:0!important;
+    overflow:hidden!important;
+    align-self:stretch;
+  }
+
+  .sidebar .brand{
+    flex:0 0 auto;
+  }
+
+  .sidebar .nav{
+    flex:1 1 auto;
+    min-height:0;
+    overflow-y:auto;
+    overflow-x:hidden;
+    overscroll-behavior:contain;
+    scrollbar-width:thin;
+    scrollbar-color:rgba(145,167,196,.28) transparent;
+  }
+
+  .sidebar .nav::-webkit-scrollbar{width:5px}
+  .sidebar .nav::-webkit-scrollbar-track{background:transparent}
+  .sidebar .nav::-webkit-scrollbar-thumb{background:rgba(145,167,196,.24);border-radius:999px}
+
+  .sidebar-footer{
+    flex:0 0 auto;
+    width:100%;
+    min-width:0;
+  }
+
+  /* Only this region moves vertically. */
+  .main{
+    position:relative;
+    height:100dvh!important;
+    min-height:0!important;
+    overflow-y:auto!important;
+    overflow-x:hidden!important;
+    overscroll-behavior-y:contain;
+    scrollbar-gutter:stable;
+    -webkit-overflow-scrolling:touch;
+  }
+
+  .main:focus{outline:none}
+  .page{min-width:0}
+
+  /* Keep the beta report action inside the rail instead of covering the user card. */
+  .sidebar-footer .beta-feedback-launcher{
+    position:static!important;
+    inset:auto!important;
+    z-index:auto!important;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    width:100%;
+    max-width:none;
+    min-height:34px;
+    margin:8px 0 0;
+    padding:7px 10px;
+    border-color:rgba(145,167,196,.16);
+    border-radius:11px;
+    background:rgba(255,255,255,.025);
+    color:var(--muted,#91a7c4);
+    box-shadow:none;
+    backdrop-filter:none;
+    -webkit-backdrop-filter:none;
+    font-size:10.5px;
+    font-weight:600;
+    letter-spacing:0;
+  }
+
+  .sidebar-footer .beta-feedback-launcher:hover{
+    transform:none;
+    background:rgba(255,255,255,.05);
+    border-color:rgba(76,224,179,.22);
+    color:#cbeee4;
+  }
+
+  .sidebar-footer .beta-version{
+    margin-top:7px;
+    text-align:left;
+  }
+}
+
+/* Collapsed desktop rail: keep support accessible without forcing text into 84 px. */
+@media (min-width:721px) and (max-width:1100px){
+  .sidebar-footer{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+  }
+
+  .sidebar-footer .beta-feedback-launcher{
+    width:42px;
+    min-width:42px;
+    height:36px;
+    min-height:36px;
+    padding:0;
+    font-size:0!important;
+  }
+
+  .sidebar-footer .beta-feedback-launcher::before{
+    content:"⚑";
+    font-size:14px;
+    line-height:1;
+  }
+
+  .sidebar-footer .beta-version{
+    max-width:58px;
+    text-align:center;
+    overflow-wrap:anywhere;
+    font-size:8px;
+    line-height:1.3;
+  }
+}
+
+/* Mobile: existing bottom navigation remains the fixed navigation surface. */
+@media (max-width:720px){
+  html,
+  body{
+    width:100%;
+    min-height:100%;
+    height:auto;
+    overflow-x:hidden!important;
+    overflow-y:auto!important;
+  }
+
+  #app{
+    height:auto;
+    min-height:100dvh;
+    overflow:visible;
+  }
+
+  .shell{
+    height:auto!important;
+    min-height:100dvh!important;
+    overflow:visible!important;
+  }
+
+  .main{
+    height:auto!important;
+    min-height:0!important;
+    overflow:visible!important;
+  }
+
+  /* On mobile the report action sits in the page actions and becomes a small icon. */
+  .topbar .beta-feedback-launcher{
+    position:static!important;
+    inset:auto!important;
+    z-index:auto!important;
+    width:38px;
+    min-width:38px;
+    height:38px;
+    max-width:none;
+    padding:0;
+    margin:0;
+    border-radius:11px;
+    background:rgba(255,255,255,.035);
+    border-color:rgba(255,255,255,.08);
+    color:var(--muted,#91a7c4);
+    box-shadow:none;
+    backdrop-filter:none;
+    -webkit-backdrop-filter:none;
+    font-size:0!important;
+  }
+
+  .topbar .beta-feedback-launcher::before{
+    content:"⚑";
+    font-size:14px;
+    line-height:1;
+  }
+
+  .topbar .beta-feedback-launcher:hover{
+    transform:none;
+    background:rgba(255,255,255,.06);
+    border-color:rgba(76,224,179,.2);
+  }
+}
+
+@media (prefers-reduced-motion:reduce){
+  .main{scroll-behavior:auto}
+}

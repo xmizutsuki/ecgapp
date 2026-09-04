@@ -1,7 +1,7 @@
-/* ECG Lab — tab navigation state preservation.
-   Keeps per-tab scroll position and prevents navigation between main tabs from
-   tearing down active CAT/simulation runners. Explicit Back/Exit buttons still
-   control when a session is intentionally left. */
+/* ECG Lab — tab navigation state preservation v2.
+   Keeps per-tab scroll position and prevents main-tab navigation from tearing
+   down active CAT/simulation runners. Explicit Back/Exit controls still own
+   session exit. */
 (function(){
   'use strict';
 
@@ -27,9 +27,12 @@
     admin:['Painel administrativo','Gerencie ECGs e conteúdo educacional.']
   };
 
+  function activeDomPage(){
+    return document.querySelector('.page.active')?.id||null;
+  }
+
   function currentPage(){
-    if(typeof state!=='undefined'&&state?.page)return state.page;
-    return document.querySelector('.page.active')?.id||'dashboard';
+    return activeDomPage()||(typeof state!=='undefined'&&state?.page)||'dashboard';
   }
 
   function currentScroll(){
@@ -40,23 +43,35 @@
     if(page&&document.getElementById(page))scrollByPage.set(page,currentScroll());
   }
 
-  function restore(page){
+  function finishRestore(page){
     const y=scrollByPage.has(page)?scrollByPage.get(page):0;
-    restoring=true;
     requestAnimationFrame(()=>requestAnimationFrame(()=>{
-      window.scrollTo({top:y,left:0,behavior:'auto'});
+      const maxY=Math.max(0,document.documentElement.scrollHeight-window.innerHeight);
+      window.scrollTo({top:Math.min(y,maxY),left:0,behavior:'auto'});
       restoring=false;
     }));
   }
 
   function navigate(id){
-    const from=currentPage();
-    if(id===from)return;
-    remember(from);
-
     if(!document.getElementById(id))id='dashboard';
-    if(typeof state!=='undefined')state.page=id;
 
+    const active=activeDomPage();
+    const from=active||(typeof state!=='undefined'&&state?.page)||null;
+
+    // Only short-circuit when the requested page is actually active in the DOM.
+    // renderShell() rebuilds every <section class="page"> and then calls
+    // showPage(state.page); at that moment state.page already matches the target,
+    // but no section has .active yet. The old implementation returned too early,
+    // leaving the entire content area blank.
+    if(active===id){
+      if(typeof state!=='undefined')state.page=id;
+      return;
+    }
+
+    if(active)remember(active);
+    restoring=true;
+
+    if(typeof state!=='undefined')state.page=id;
     document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.id===id));
     document.querySelectorAll('[data-page]').forEach(b=>b.classList.toggle('active',b.dataset.page===id));
 
@@ -68,33 +83,37 @@
 
     if(id==='desempenho')window.ECG_PERFORMANCE?.activate?.();
 
-    // Do not call renderTraining/renderSims here. Their current DOM is kept alive,
-    // so an active question remains exactly where the user left it.
-    restore(id);
+    // Do not re-render Treinar/Simulados here. Their DOM remains mounted while
+    // hidden, preserving the exact active question, selected option, timers and
+    // visual state. Dedicated Back/Exit controls still perform the explicit exit.
+    finishRestore(id);
     window.dispatchEvent(new CustomEvent('ecg:pagechange',{detail:{from,to:id}}));
   }
 
-  // Loaded last: this intentionally replaces the older CAT navigation wrapper,
-  // whose tab-switch behavior treated every navigation as an explicit session exit.
+  // Loaded last so this supersedes the older CAT wrapper that interpreted any
+  // main-tab change as a session exit.
   window.showPage=navigate;
 
-  // Existing handlers resolve showPage at click time, but this also covers buttons
-  // inserted later by feature modules or responsive navigation.
-  document.addEventListener('click',e=>{
-    const button=e.target.closest?.('[data-page]');
-    if(!button)return;
-    const target=button.dataset.page;
-    if(!target||target===currentPage())return;
-    e.preventDefault();
-    navigate(target);
-  },true);
+  // renderShell() wires all current [data-page] buttons to showPage at click time,
+  // so no second capture-phase click handler is needed. Avoiding a duplicate
+  // navigation pass also prevents race conditions during shell rebuilds.
 
-  // Remember the latest position continuously so returning to a tab restores the
-  // same reading/question position instead of jumping to the top.
   let scrollTick=false;
   window.addEventListener('scroll',()=>{
     if(restoring||scrollTick)return;
     scrollTick=true;
-    requestAnimationFrame(()=>{scrollTick=false;remember(currentPage())});
+    requestAnimationFrame(()=>{
+      scrollTick=false;
+      const active=activeDomPage();
+      if(active)remember(active);
+    });
   },{passive:true});
+
+  // Safety net for the already-mounted shell when this file is loaded.
+  queueMicrotask(()=>{
+    if(!activeDomPage()){
+      const target=(typeof state!=='undefined'&&state?.page)||'dashboard';
+      if(document.getElementById(target))navigate(target);
+    }
+  });
 })();

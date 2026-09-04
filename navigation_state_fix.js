@@ -1,12 +1,13 @@
-/* ECG Lab — tab navigation state preservation.
-   Keeps per-tab scroll position and prevents navigation between main tabs from
-   tearing down active CAT/simulation runners. Explicit Back/Exit buttons still
-   control when a session is intentionally left. */
+/* ECG Lab — navigation/session stability v3.
+   Main-tab changes are view switches, not session exits. Active CAT/practice-exam
+   DOM is preserved across Supabase shell refreshes, legacy navigation handlers are
+   blocked from firing a second time, and scroll restoration is instantaneous. */
 (function(){
   'use strict';
 
   const scrollByPage=new Map();
   let restoring=false;
+  let shellPreserve=null;
 
   const isEn=()=>window.ECG_LANG==='en';
   const meta=()=>isEn()?{
@@ -27,9 +28,16 @@
     admin:['Painel administrativo','Gerencie ECGs e conteúdo educacional.']
   };
 
+  function statePage(){
+    return (typeof state!=='undefined'&&state?.page)||'dashboard';
+  }
+
+  function domPage(){
+    return document.querySelector('.page.active')?.id||null;
+  }
+
   function currentPage(){
-    if(typeof state!=='undefined'&&state?.page)return state.page;
-    return document.querySelector('.page.active')?.id||'dashboard';
+    return domPage()||statePage();
   }
 
   function currentScroll(){
@@ -40,26 +48,25 @@
     if(page&&document.getElementById(page))scrollByPage.set(page,currentScroll());
   }
 
-  function restore(page){
-    const y=scrollByPage.has(page)?scrollByPage.get(page):0;
-    restoring=true;
-    requestAnimationFrame(()=>requestAnimationFrame(()=>{
-      window.scrollTo({top:y,left:0,behavior:'auto'});
-      restoring=false;
-    }));
+  function instantScroll(y){
+    const root=document.documentElement;
+    const previous=root.style.scrollBehavior;
+    root.style.scrollBehavior='auto';
+    window.scrollTo(0,Math.max(0,Number(y)||0));
+    root.style.scrollBehavior=previous;
   }
 
-  function navigate(id){
-    const from=currentPage();
-    const activeId=document.querySelector('.page.active')?.id||null;
+  function restore(page){
+    const y=scrollByPage.get(page)||0;
+    restoring=true;
+    requestAnimationFrame(()=>{
+      instantScroll(y);
+      restoring=false;
+    });
+  }
 
+  function applyPage(id){
     if(!document.getElementById(id))id='dashboard';
-
-    // shell() rebuilds every .page node. In that moment state.page may already equal
-    // the requested id even though the new DOM has no active page yet. Only treat
-    // same-page navigation as a no-op when the DOM is already synchronized.
-    if(id===from&&activeId===id)return;
-    if(id!==from)remember(from);
     if(typeof state!=='undefined')state.page=id;
 
     document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.id===id));
@@ -70,36 +77,125 @@
     const subtitle=document.getElementById('pageSubtitle');
     if(title)title.textContent=m[0];
     if(subtitle)subtitle.textContent=m[1];
+    return id;
+  }
 
+  function navigate(id,{force=false,restoreScroll=true}={}){
+    const from=currentPage();
+    if(!document.getElementById(id))id='dashboard';
+
+    if(!force&&id===from&&domPage()===id)return;
+    if(id!==from)remember(from);
+
+    id=applyPage(id);
     if(id==='desempenho')window.ECG_PERFORMANCE?.activate?.();
+    if(restoreScroll)restore(id);
 
-    // Do not call renderTraining/renderSims here. Their current DOM is kept alive,
-    // so an active question remains exactly where the user left it.
-    restore(id);
     window.dispatchEvent(new CustomEvent('ecg:pagechange',{detail:{from,to:id}}));
   }
 
-  // Loaded last: this intentionally replaces the older CAT navigation wrapper,
-  // whose tab-switch behavior treated every navigation as an explicit session exit.
+  /*
+   * Legacy feature layers installed their own showPage wrappers. Some of those
+   * wrappers interpret leaving Treinar ECG as an explicit "save and exit" action.
+   * This runtime is loaded last and is the single owner of main-tab navigation.
+   */
   window.showPage=navigate;
 
-  // Existing handlers resolve showPage at click time, but this also covers buttons
-  // inserted later by feature modules or responsive navigation.
+  /*
+   * Stop the click before old per-button onclick handlers run. Without this, one
+   * click can execute both this navigator and a legacy showPage wrapper, which is
+   * what caused an active question to be replaced by the training home screen.
+   */
   document.addEventListener('click',e=>{
     const button=e.target.closest?.('[data-page]');
     if(!button)return;
     const target=button.dataset.page;
-    if(!target||target===currentPage())return;
+    if(!target)return;
     e.preventDefault();
+    e.stopImmediatePropagation();
     navigate(target);
   },true);
 
-  // Remember the latest position continuously so returning to a tab restores the
-  // same reading/question position instead of jumping to the top.
-  let scrollTick=false;
-  window.addEventListener('scroll',()=>{
-    if(restoring||scrollTick)return;
-    scrollTick=true;
-    requestAnimationFrame(()=>{scrollTick=false;remember(currentPage())});
-  },{passive:true});
+  /*
+   * Supabase emits auth lifecycle events such as INITIAL_SESSION/TOKEN_REFRESHED.
+   * app.js may rebuild the entire shell for those events. Preserve the live runner
+   * nodes (and their event handlers) across same-user shell rebuilds, and suppress
+   * renderTraining/renderSims while those nodes are detached so runtime state is
+   * not reset to the corresponding home screen.
+   */
+  const originalShell=typeof window.shell==='function'?window.shell:null;
+  const originalRenderTraining=typeof window.renderTraining==='function'?window.renderTraining:null;
+  const originalRenderSims=typeof window.renderSims==='function'?window.renderSims:null;
+  const userKey=()=>{
+    if(typeof state==='undefined')return null;
+    return state?.user?.id||(state?.demo?'demo-user':null);
+  };
+  let renderedUserKey=userKey();
+
+  function detachRunner(pageId,selector){
+    const page=document.getElementById(pageId);
+    if(!page||!page.querySelector(selector))return null;
+    const fragment=document.createDocumentFragment();
+    while(page.firstChild)fragment.appendChild(page.firstChild);
+    return {fragment};
+  }
+
+  if(originalRenderTraining){
+    window.renderTraining=function(...args){
+      if(shellPreserve?.treinar)return;
+      return originalRenderTraining.apply(this,args);
+    };
+  }
+
+  if(originalRenderSims){
+    window.renderSims=function(...args){
+      if(shellPreserve?.simulados)return;
+      return originalRenderSims.apply(this,args);
+    };
+  }
+
+  if(originalShell){
+    window.shell=function(...args){
+      const nextUserKey=userKey();
+      const sameUser=!!nextUserKey&&nextUserKey===renderedUserKey;
+      const targetPage=statePage();
+
+      remember(currentPage());
+      shellPreserve=sameUser?{
+        treinar:detachRunner('treinar','.cat-runner'),
+        simulados:detachRunner('simulados','.sim-runner-shell')
+      }:null;
+
+      let result;
+      try{
+        result=originalShell.apply(this,args);
+      }finally{
+        if(shellPreserve?.treinar){
+          const page=document.getElementById('treinar');
+          if(page){page.replaceChildren();page.appendChild(shellPreserve.treinar.fragment)}
+        }
+        if(shellPreserve?.simulados){
+          const page=document.getElementById('simulados');
+          if(page){page.replaceChildren();page.appendChild(shellPreserve.simulados.fragment)}
+        }
+        shellPreserve=null;
+        renderedUserKey=nextUserKey;
+        applyPage(targetPage);
+        restore(targetPage);
+      }
+      return result;
+    };
+  }
+
+  // Browser history should not fight the app's own per-tab position restoration.
+  try{if('scrollRestoration'in history)history.scrollRestoration='manual'}catch{}
+
+  window.ECG_NAVIGATION={
+    version:'3.0.0',
+    navigate,
+    currentPage,
+    remember,
+    restore,
+    get restoring(){return restoring}
+  };
 })();

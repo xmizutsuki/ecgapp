@@ -1,14 +1,37 @@
-# Optional Supabase backend
+# Supabase — ECG Lab Beta 1.0
 
-The static ECG Lab demo does **not** require Supabase. Configure this folder only when enabling real accounts, persisted progress, administration, cross-device practice exam history, and the AI tutor.
+O banco de produção da Beta 1.0 evoluiu além do `schema.sql` original.
 
-1. Create a Supabase project.
-2. Run `schema.sql`, then `simulation_suite.sql`, and then `seed.sql` in the SQL editor.
-3. Configure the public project URL and publishable key in `config.js`.
-4. Set `GROQ_API_KEY` as an Edge Function secret before deploying `functions/ecg-tutor`.
-5. The default Tutor/CaseCoach model is `openai/gpt-oss-20b`, with `llama-3.1-8b-instant` as an availability fallback. Override them only with the server-side `GROQ_MODEL` and `GROQ_FALLBACK_MODEL` secrets/settings when needed.
-6. Never commit `service_role`, database passwords, `GROQ_API_KEY`, or any other provider secret.
+## Regra principal
 
-`simulation_suite.sql` creates the authenticated `simulations` and `simulation_answers` tables used to resume practice exams across browsers/devices. The app always saves locally first and only marks cloud synchronization complete after Supabase accepts the update.
+**Não execute `schema.sql` sobre o projeto de produção atual.** Ele representa o bootstrap legado de uma fase anterior e contém nomes/estruturas de conteúdo que não correspondem integralmente ao banco ativo.
 
-The ECG files served by GitHub Pages are educational simulations generated at build time and are independent of Supabase Storage.
+Mudanças novas devem ser incrementais e idempotentes. Antes de qualquer DDL:
+
+1. inspecione o esquema real do projeto;
+2. confirme RLS e políticas existentes;
+3. aplique somente a migração necessária;
+4. rode os Security/Performance Advisors novamente;
+5. valide treino, simulados, desempenho, autenticação e Tutor.
+
+## Suites atuais
+
+- `training_suite.sql` — persistência do CAT;
+- `simulation_suite.sql` — persistência dos simulados;
+- `performance_suite.sql` — eventos e agregados de desempenho;
+- `tutor_suite.sql` — conversas/sinais educacionais do Tutor;
+- `beta_feedback.sql` — feedback da fase beta;
+- `beta_1_0_live_hardening.sql` — permissões e índices de endurecimento da Beta 1.0.
+
+## Edge Functions
+
+A Beta 1.0 usa:
+
+- `ecg-tutor` — CardioTutor e CaseCoach;
+- `performance-insight` — interpretação educacional de métricas estruturadas.
+
+Ambas devem permanecer com verificação JWT habilitada. Segredos do provedor de IA ficam somente no ambiente das Edge Functions.
+
+## Produção
+
+O frontend usa apenas URL do projeto e publishable key. Dados do usuário permanecem protegidos por RLS. Os ECGs e PDFs educacionais publicados no GitHub Pages são gerados no build e independem do Supabase Storage.

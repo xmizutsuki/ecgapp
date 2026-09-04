@@ -37,6 +37,7 @@ create table if not exists public.tutor_learning_signals (
 
 create index if not exists tutor_conversations_user_updated_idx on public.tutor_conversations(user_id,updated_at desc);
 create index if not exists tutor_messages_user_created_idx on public.tutor_messages(user_id,created_at desc);
+create index if not exists tutor_messages_conversation_idx on public.tutor_messages(conversation_id);
 create index if not exists tutor_learning_signals_user_created_idx on public.tutor_learning_signals(user_id,created_at desc);
 create index if not exists tutor_learning_signals_category_idx on public.tutor_learning_signals(user_id,category,created_at desc);
 
@@ -45,13 +46,13 @@ alter table public.tutor_messages enable row level security;
 alter table public.tutor_learning_signals enable row level security;
 
 drop policy if exists "Users manage own tutor conversations" on public.tutor_conversations;
-create policy "Users manage own tutor conversations" on public.tutor_conversations for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "Users manage own tutor conversations" on public.tutor_conversations for all using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
 
 drop policy if exists "Users manage own tutor messages" on public.tutor_messages;
-create policy "Users manage own tutor messages" on public.tutor_messages for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "Users manage own tutor messages" on public.tutor_messages for all using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
 
 drop policy if exists "Users manage own tutor learning signals" on public.tutor_learning_signals;
-create policy "Users manage own tutor learning signals" on public.tutor_learning_signals for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "Users manage own tutor learning signals" on public.tutor_learning_signals for all using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
 
 comment on table public.tutor_learning_signals is 'Educational assistance metadata. Do not treat Tutor usage by itself as a negative mastery signal.';
 comment on column public.tutor_learning_signals.answer_submitted is 'Whether the activity answer had already been submitted when assistance was requested.';

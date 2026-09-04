@@ -120,20 +120,30 @@
 
   function injectStylesheet(){if(document.querySelector('link[href="performance_features.css"]'))return;const l=document.createElement('link');l.rel='stylesheet';l.href='performance_features.css';document.head.appendChild(l)}
   function injectPerformanceUI(){const shellEl=document.querySelector('.shell');if(!shellEl)return false;const main=document.querySelector('.main'),simSection=document.getElementById('simulados');if(main&&!document.getElementById('desempenho')){const sec=document.createElement('section');sec.id='desempenho';sec.className='page';simSection?.after(sec)}const side=document.querySelector('.sidebar .nav');if(side&&!side.querySelector('[data-page="desempenho"]')){const ref=side.querySelector('[data-page="simulados"]'),b=document.createElement('button');b.dataset.page='desempenho';b.innerHTML=`<b>↗</b><span>${safe(L().nav)}</span>`;b.onclick=()=>showPage('desempenho');ref?.after(b)}const mobile=document.querySelector('.mobile-nav');if(mobile&&!mobile.querySelector('[data-page="desempenho"]')){const ref=mobile.querySelector('[data-page="simulados"]'),b=document.createElement('button');b.dataset.page='desempenho';b.innerHTML=`↗<br><small>${safe(L().mobile)}</small>`;b.onclick=()=>showPage('desempenho');ref?.after(b);mobile.classList.add('has-performance')};return true}
-  const originalShow=typeof showPage==='function'?showPage:null;
-  if(originalShow){window.showPage=function(id){injectPerformanceUI();const r=originalShow(id);if(id==='desempenho'){const title=document.getElementById('pageTitle'),sub=document.getElementById('pageSubtitle');if(title)title.textContent=L().title;if(sub)sub.textContent=L().subtitle;renderPerformance();void loadRemote().then(()=>renderPerformance())}return r}}
-  const originalShell=typeof shell==='function'?shell:null;
-  if(originalShell){window.shell=function(){const r=originalShell();injectPerformanceUI();if(state?.page==='desempenho'){setTimeout(()=>showPage('desempenho'),0)}return r}}
-  const originalRenderAll=typeof renderAll==='function'?renderAll:null;
-  if(originalRenderAll){window.renderAll=function(){const r=originalRenderAll();injectPerformanceUI();renderPerformance();return r}}
-
-  function relevantStorageKey(key){return key===TRAIN_PREFIX+userId()||key===SIM_PREFIX+userId()||String(key).startsWith(CASE_PREFIX)}
-  if(!window.__ecgPerformanceStorageHook&&window.Storage){const originalSet=Storage.prototype.setItem;Storage.prototype.setItem=function(key,value){const r=originalSet.call(this,key,value);if(this===localStorage&&relevantStorageKey(String(key)))setTimeout(()=>{backfillSources();if(state?.page==='desempenho')renderPerformance()},0);return r};window.__ecgPerformanceStorageHook=true}
+  // V2 stability: performance no longer wraps core navigation/render functions or patches Storage.prototype.
+  // The core app owns navigation; this module only renders/synchronizes its own page.
   function scheduleRender(){if(runtime.renderQueued)return;runtime.renderQueued=true;setTimeout(()=>{runtime.renderQueued=false;if(state?.page==='desempenho')renderPerformance()},80)}
+  function refreshFromSources(){backfillSources();if(state?.page==='desempenho')renderPerformance()}
+  function activatePerformance(){
+    injectPerformanceUI();
+    const title=document.getElementById('pageTitle'),sub=document.getElementById('pageSubtitle');
+    if(title)title.textContent=L().title;if(sub)sub.textContent=L().subtitle;
+    renderPerformance();
+    void loadRemote().then(()=>{if(state?.page==='desempenho')renderPerformance()});
+  }
+  document.addEventListener('click',e=>{
+    const target=e.target?.closest?.('[data-page="desempenho"]');
+    if(!target)return;
+    setTimeout(()=>{if(state?.page==='desempenho')activatePerformance()},0);
+  });
+  window.addEventListener('storage',e=>{
+    const key=String(e.key||'');
+    if(key===TRAIN_PREFIX+userId()||key===SIM_PREFIX+userId()||key.startsWith(CASE_PREFIX))scheduleRender();
+  });
 
   injectStylesheet();
-  const boot=()=>{injectPerformanceUI();backfillSources();if(state?.page==='desempenho')renderPerformance();void loadRemote().then(()=>{if(state?.page==='desempenho')renderPerformance()})};
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else setTimeout(boot,0);
-  window.addEventListener('load',boot);
-  window.ECG_PERFORMANCE={version:VERSION,readEvents,backfillSources,buildModel,render:renderPerformance,focusWeights};
+  const boot=()=>{injectPerformanceUI();backfillSources();if(state?.page==='desempenho')activatePerformance();else void loadRemote()};
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else setTimeout(boot,0);
+  window.addEventListener('load',boot,{once:true});
+  window.ECG_PERFORMANCE={version:2,readEvents,backfillSources,buildModel,render:renderPerformance,focusWeights,activate:activatePerformance,refresh:refreshFromSources};
 })();

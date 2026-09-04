@@ -38,6 +38,7 @@ jobs:
           python scripts/patch_mobile_zoom.py
           python scripts/patch_simulation_autofinish.py
           python scripts/patch_training_performance_focus.py
+          python scripts/patch_floating_tutor_nav.py
 
       - name: Generate ECG vector library
         run: python scripts/generate_ecg_svgs.py
@@ -49,7 +50,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for f in index.html app.js styles.css release_features.css performance_features.css i18n.js english_content.js english_content_finalize.js localize_data.js bilingual_ui_fixes.js tutor_bilingual_fix.js real_cases.js study_content.js study_casecoach_features.js training_features.js simulation_features.js simulation_zoom.js performance_features.js supabase/training_suite.sql supabase/simulation_suite.sql supabase/performance_suite.sql supabase/functions/ecg-tutor/index.ts supabase/functions/performance-insight/index.ts scripts/patch_simulation_autofinish.py scripts/patch_training_performance_focus.py; do
+          for f in index.html app.js styles.css release_features.css performance_features.css floating_tutor.css i18n.js english_content.js english_content_finalize.js localize_data.js bilingual_ui_fixes.js tutor_bilingual_fix.js floating_tutor.js real_cases.js study_content.js study_casecoach_features.js training_features.js simulation_features.js simulation_zoom.js performance_features.js supabase/training_suite.sql supabase/simulation_suite.sql supabase/performance_suite.sql supabase/tutor_suite.sql supabase/functions/ecg-tutor/index.ts supabase/functions/performance-insight/index.ts scripts/patch_simulation_autofinish.py scripts/patch_training_performance_focus.py scripts/patch_floating_tutor_nav.py; do
             test -f "$f" || { echo "Missing required file: $f"; exit 1; }
           done
 
@@ -64,6 +65,7 @@ jobs:
           node --check localize_data.js
           node --check bilingual_ui_fixes.js
           node --check tutor_bilingual_fix.js
+          node --check floating_tutor.js
           node --check real_cases.js
           node --check study_content.js
           node --check study_casecoach_features.js
@@ -71,12 +73,14 @@ jobs:
           node --check simulation_features.js
           node --check simulation_zoom.js
           node --check performance_features.js
-          python -m py_compile scripts/generate_ecg_svgs.py scripts/generate_lesson_pdfs.py scripts/patch_i18n.py scripts/patch_app_language.py scripts/patch_mobile_zoom.py scripts/patch_simulation_autofinish.py scripts/patch_training_performance_focus.py
+          python -m py_compile scripts/generate_ecg_svgs.py scripts/generate_lesson_pdfs.py scripts/patch_i18n.py scripts/patch_app_language.py scripts/patch_mobile_zoom.py scripts/patch_simulation_autofinish.py scripts/patch_training_performance_focus.py scripts/patch_floating_tutor_nav.py
 
           grep -q "english_content.js" index.html
           grep -q "english_content_finalize.js" index.html
           grep -q "bilingual_ui_fixes.js" index.html
           grep -q "tutor_bilingual_fix.js" index.html
+          grep -q "floating_tutor.js" index.html
+          grep -q "floating_tutor.css" index.html
           grep -q "training_features.js" index.html
           grep -q "simulation_zoom.js" index.html
           grep -q "performance_features.js" index.html
@@ -86,6 +90,34 @@ jobs:
           grep -q "CardioTutor AI" tutor_bilingual_fix.js
           grep -q "language:window.ECG_LANG" tutor_bilingual_fix.js
           ! grep -q "const wordMap=" i18n.js
+
+          # The legacy Tutor page/tab is removed from the built app; floating_tutor.js owns Tutor UI.
+          ! grep -q "navButton('tutor','✦','Tutor IA')" app.js
+          ! grep -q "mobileNav('tutor','✦','Tutor')" app.js
+          ! grep -q 'id="tutor" class="page"' app.js
+
+          # Floating contextual Tutor: bilingual UI, persistence, context safety, voice, Socratic mode and exam lock.
+          grep -q "ecgLabTutorConversations:v" floating_tutor.js
+          grep -q "ecgLabTutorSignals:v" floating_tutor.js
+          grep -q "Use context from this screen" floating_tutor.js
+          grep -q "Usar contexto desta tela" floating_tutor.js
+          grep -q "Socratic mode" floating_tutor.js
+          grep -q "Modo Socrático" floating_tutor.js
+          grep -q "SpeechRecognition" floating_tutor.js
+          grep -q "answerSubmitted" floating_tutor.js
+          grep -q "Tutor available after you finish this practice exam" floating_tutor.js
+          grep -q "Tutor disponível após finalizar o simulado" floating_tutor.js
+          grep -q "ecgLabPracticeTutorMode:v1" floating_tutor.js
+          grep -q "tutor_learning_signals" floating_tutor.js
+          grep -q "IMPORTANT LEARNING RULE" supabase/functions/ecg-tutor/index.ts
+          grep -q "REGRA EDUCACIONAL IMPORTANTE" supabase/functions/ecg-tutor/index.ts
+          grep -q "answerSubmitted === false" supabase/functions/ecg-tutor/index.ts
+          grep -q "Exam Mode" supabase/functions/ecg-tutor/index.ts
+          grep -q "tutor_conversations" supabase/tutor_suite.sql
+          grep -q "tutor_messages" supabase/tutor_suite.sql
+          grep -q "tutor_learning_signals" supabase/tutor_suite.sql
+          grep -q "auth.uid()" supabase/tutor_suite.sql
+          grep -q "Do not treat Tutor usage by itself as a negative mastery signal" supabase/tutor_suite.sql
 
           # Adaptive ECG Training / CAT suite.
           grep -q "QUICK_COUNTS=\[20,30,40,50,60,70,80\]" training_features.js
@@ -224,10 +256,10 @@ jobs:
               files=sorted((Path('assets/lessons')/lang).glob('*.pdf'))
               bad=[str(f) for f in files if len(PdfReader(str(f)).pages) != 6]
               if bad: raise SystemExit(f'Lesson PDFs must have 6 pages: {bad}')
-          print('Static references, My Performance assets, and 42 six-page PDFs validated.')
+          print('Static references, floating Tutor assets, My Performance assets, and 42 six-page PDFs validated.')
           PY
 
-          ! grep -RniE 'registro clínico real|ECG real de paciente|real patient ECG' index.html app.js study_casecoach_features.js training_features.js performance_features.js README.md DATA_SOURCES.md || {
+          ! grep -RniE 'registro clínico real|ECG real de paciente|real patient ECG' index.html app.js study_casecoach_features.js training_features.js performance_features.js floating_tutor.js README.md DATA_SOURCES.md || {
             echo 'Found wording that may incorrectly imply the synthetic training tracings are real patient ECGs.'
             exit 1
           }

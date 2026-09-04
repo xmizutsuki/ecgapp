@@ -5,11 +5,13 @@ p = root / 'app.js'
 s = p.read_text(encoding='utf-8')
 changed = False
 
+# Remove only the legacy full-page Tutor entry points. Keep adjacent pages such as
+# Meu Desempenho intact even when they are inserted between Simulados and Tutor.
 replacements = [
     ("        ${navButton('tutor','✦','Tutor IA')}\n", ""),
     ("${mobileNav('tutor','✦','Tutor')}", ""),
-    ("<section id=\"simulados\" class=\"page\"></section><section id=\"tutor\" class=\"page\"></section>", "<section id=\"simulados\" class=\"page\"></section>"),
-    ("renderSims();renderTutor();", "renderSims();"),
+    ("<section id=\"tutor\" class=\"page\"></section>", ""),
+    ("renderTutor();", ""),
     (",tutor:['Tutor IA','Tire dúvidas sobre conceitos e raciocínio eletrocardiográfico.']", ""),
 ]
 
@@ -18,7 +20,8 @@ for old, new in replacements:
         s = s.replace(old, new)
         changed = True
 
-# Keep the old renderTutor implementation only as dead compatibility code; the floating layer owns Tutor UI.
+# The floating Tutor owns Tutor UI. Fail only if a real legacy navigation/page entry
+# survives; do not depend on the exact ordering of neighboring feature pages.
 if "navButton('tutor','✦','Tutor IA')" in s or "mobileNav('tutor','✦','Tutor')" in s or 'id="tutor" class="page"' in s:
     raise SystemExit('Legacy Tutor navigation/page could not be fully removed from app.js')
 

@@ -110,5 +110,5 @@
   }
 
   try{if('scrollRestoration'in history)history.scrollRestoration='manual'}catch{}
-  window.ECG_NAVIGATION={version:'5.0.0',revision:'7.0.0-mobile-shell-preserve',navigate,currentPage,remember,restore,scrollTop,mainScroller,get restoring(){return restoring},get touchActive(){return touchActive}};
+  window.ECG_NAVIGATION={version:'7.0.0',revision:'7.0.0-mobile-shell-preserve',navigate,currentPage,remember,restore,scrollTop,mainScroller,get restoring(){return restoring},get touchActive(){return touchActive}};
 })();

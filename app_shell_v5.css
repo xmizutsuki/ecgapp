@@ -4,8 +4,6 @@
    from drifting or ending partway down long pages. Mobile keeps natural scrolling. */
 
 @media (min-width:721px){
-  /* One and only one vertical scrolling surface. Keeping body out of the scroll
-     chain avoids browser-specific sticky/scroll-container behavior on Windows. */
   html{
     width:100%;
     min-height:100%;
@@ -23,9 +21,6 @@
     overflow:visible!important;
   }
 
-  /* Keep document scrolling, but hide the native scrollbar chrome completely.
-     This avoids the bright Windows scrollbar gutter while preserving mouse wheel,
-     trackpad, PageUp/PageDown and keyboard scrolling. */
   html::-webkit-scrollbar{width:0!important;height:0!important;display:none!important}
   html::-webkit-scrollbar-track,
   html::-webkit-scrollbar-thumb,
@@ -64,7 +59,6 @@
   }
 
   .sidebar .brand{flex:0 0 auto}
-
   .sidebar .nav{
     flex:1 1 auto;
     min-height:0;
@@ -74,16 +68,8 @@
     scrollbar-width:none;
   }
   .sidebar .nav::-webkit-scrollbar{display:none}
+  .sidebar-footer{flex:0 0 auto;width:100%;min-width:0}
 
-  .sidebar-footer{
-    flex:0 0 auto;
-    width:100%;
-    min-width:0;
-  }
-
-  /* UI Foundation v3 also declares .main with !important and a more-specific
-     body.ui-foundation-v3 selector. Match that specificity here so the fixed-rail
-     offset cannot be silently overridden and slide content underneath the sidebar. */
   body.ui-foundation-v3 .main,
   .main{
     position:relative;
@@ -107,25 +93,10 @@
     margin-right:auto;
   }
 
-  .page,
-  .page>*{
-    min-width:0;
-  }
-
-  .cat-home,
-  .cat-section,
-  .cat-history-list,
-  .cat-history-item,
-  .sim-home,
-  .sim-section,
-  .sim-history-list,
-  .sim-history-item,
-  .perf-page,
-  .study-detail-grid,
-  .case-layout{
-    max-width:100%;
-    min-width:0;
-  }
+  .page,.page>*{min-width:0}
+  .cat-home,.cat-section,.cat-history-list,.cat-history-item,
+  .sim-home,.sim-section,.sim-history-list,.sim-history-item,
+  .perf-page,.study-detail-grid,.case-layout{max-width:100%;min-width:0}
 
   .ft2-fab{right:24px!important}
 
@@ -160,68 +131,33 @@
     color:#cbeee4;
   }
 
-  .sidebar-footer .beta-version{
-    margin-top:7px;
-    text-align:left;
-  }
+  .sidebar-footer .beta-version{margin-top:7px;text-align:left}
 }
 
 @media (min-width:721px) and (max-width:1100px){
-  .sidebar{
-    width:84px!important;
-  }
-
+  .sidebar{width:84px!important}
   body.ui-foundation-v3 .main,
-  .main{
-    width:calc(100% - 84px)!important;
-    margin-left:84px!important;
-  }
-
-  .sidebar-footer{
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-  }
-
+  .main{width:calc(100% - 84px)!important;margin-left:84px!important}
+  .sidebar-footer{display:flex;flex-direction:column;align-items:center}
   .sidebar-footer .beta-feedback-launcher{
-    width:42px;
-    min-width:42px;
-    height:36px;
-    min-height:36px;
-    padding:0;
-    font-size:0!important;
+    width:42px;min-width:42px;height:36px;min-height:36px;padding:0;font-size:0!important
   }
-
-  .sidebar-footer .beta-feedback-launcher::before{
-    content:"⚑";
-    font-size:14px;
-    line-height:1;
-  }
-
+  .sidebar-footer .beta-feedback-launcher::before{content:"⚑";font-size:14px;line-height:1}
   .sidebar-footer .beta-version{
-    max-width:58px;
-    text-align:center;
-    overflow-wrap:anywhere;
-    font-size:8px;
-    line-height:1.3;
+    max-width:58px;text-align:center;overflow-wrap:anywhere;font-size:8px;line-height:1.3
   }
 }
 
 @media (min-width:1101px) and (max-width:1450px){
-  .cat-history-item{
-    grid-template-columns:minmax(0,1fr) auto!important;
-  }
+  .cat-history-item{grid-template-columns:minmax(0,1fr) auto!important}
   .cat-history-item>.badge{justify-self:start}
   .cat-history-item>.btn{justify-self:end}
-
   .perf-kpis{grid-template-columns:repeat(3,minmax(0,1fr))!important}
   .perf-plan-list{grid-template-columns:1fr!important}
   .perf-two{grid-template-columns:1fr!important}
   .perf-area-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important}
-
   .clinical-cases-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important}
-  .study-detail-grid,
-  .case-layout{grid-template-columns:1fr!important}
+  .study-detail-grid,.case-layout{grid-template-columns:1fr!important}
   .case-question{position:static!important}
 }
 
@@ -235,19 +171,8 @@
     overflow-y:auto!important;
   }
 
-  #app{
-    height:auto;
-    min-height:100dvh;
-    overflow:visible;
-  }
-
-  .shell{
-    display:block!important;
-    height:auto!important;
-    min-height:100dvh!important;
-    overflow:visible!important;
-  }
-
+  #app{height:auto;min-height:100dvh;overflow:visible}
+  .shell{display:block!important;height:auto!important;min-height:100dvh!important;overflow:visible!important}
   .sidebar{display:none!important}
 
   body.ui-foundation-v3 .main,
@@ -260,26 +185,37 @@
     overflow:visible!important;
   }
 
-  /* Mobile header controls live against the right safe edge instead of floating
-     near the left. This keeps PT / quick training / login aligned with the point
-     indicated in the mobile layout while respecting iPhone safe-area insets. */
+  /* Force the complete mobile action group to the physical right edge. Using
+     absolute positioning avoids older flex rules and injected controls changing
+     the horizontal placement. */
+  body.ui-foundation-v3 .main>.topbar,
   .main>.topbar{
-    display:flex!important;
-    align-items:center!important;
-    justify-content:flex-end!important;
+    position:relative!important;
+    display:block!important;
     width:100%!important;
     max-width:none!important;
+    min-height:58px!important;
     box-sizing:border-box!important;
-    padding-left:16px!important;
-    padding-right:max(16px,env(safe-area-inset-right))!important;
+    padding:0!important;
+    margin-left:0!important;
+    margin-right:0!important;
   }
 
+  body.ui-foundation-v3 .main>.topbar>.actions,
   .main>.topbar>.actions{
-    margin-left:auto!important;
-    width:auto!important;
-    max-width:100%!important;
-    flex:0 0 auto!important;
+    position:absolute!important;
+    top:0!important;
+    right:max(8px,env(safe-area-inset-right))!important;
+    left:auto!important;
+    display:flex!important;
+    flex-wrap:nowrap!important;
+    align-items:center!important;
     justify-content:flex-end!important;
+    width:max-content!important;
+    max-width:calc(100vw - 16px)!important;
+    margin:0!important;
+    padding:0!important;
+    transform:none!important;
   }
 
   .topbar .beta-feedback-launcher{
@@ -302,12 +238,7 @@
     font-size:0!important;
   }
 
-  .topbar .beta-feedback-launcher::before{
-    content:"⚑";
-    font-size:14px;
-    line-height:1;
-  }
-
+  .topbar .beta-feedback-launcher::before{content:"⚑";font-size:14px;line-height:1}
   .topbar .beta-feedback-launcher:hover{
     transform:none;
     background:rgba(255,255,255,.06);
@@ -315,6 +246,4 @@
   }
 }
 
-@media (prefers-reduced-motion:reduce){
-  html{scroll-behavior:auto}
-}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}

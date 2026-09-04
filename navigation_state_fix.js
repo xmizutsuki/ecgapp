@@ -51,10 +51,15 @@
 
   function navigate(id){
     const from=currentPage();
-    if(id===from)return;
-    remember(from);
+    const activeId=document.querySelector('.page.active')?.id||null;
 
     if(!document.getElementById(id))id='dashboard';
+
+    // shell() rebuilds every .page node. In that moment state.page may already equal
+    // the requested id even though the new DOM has no active page yet. Only treat
+    // same-page navigation as a no-op when the DOM is already synchronized.
+    if(id===from&&activeId===id)return;
+    if(id!==from)remember(from);
     if(typeof state!=='undefined')state.page=id;
 
     document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.id===id));

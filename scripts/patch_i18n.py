@@ -12,6 +12,20 @@ for entry in [
 ]:
     s = s.replace(entry, '')
 
+# Safe UI terms used inside mixed/dynamic labels such as "Nível 2" or
+# "dificuldade 3/5". These are long enough to avoid corrupting English words.
+marker = "  const phrasePairs = [\n"
+extras = """  const phrasePairs = [
+    ['conteúdo liberado','content unlocked'],['questão atual','current question'],['próxima questão','next question'],
+    ['dificuldade','difficulty'],['Nível','Level'],['nível','level'],['precisão','accuracy'],['sequência','streak'],
+    ['questões','questions'],['questão','question'],['casos clínicos','clinical cases'],['casos','cases'],['aulas','lessons'],['aula','lesson'],
+    ['vídeos','videos'],['vídeo','video'],['liberado','unlocked'],['livre','open'],['Trilha','Study Path'],
+    ['Raciocínio','Reasoning'],['Referências','References'],['Laboratório','Laboratory'],['Imagem','Imaging'],
+    ['Exame físico','Physical examination'],['Sinais vitais','Vital signs'],['Medicações','Medications'],['História','History'],
+"""
+if marker in s and "['dificuldade','difficulty']" not in s:
+    s = s.replace(marker, extras, 1)
+
 old = """    for(const [pt,en] of phrasePairs){
       out=out.split(pt).join(en);
     }

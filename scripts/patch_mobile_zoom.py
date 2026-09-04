@@ -50,3 +50,7 @@ elif old in s:
     print('Added one-finger pan and two-finger pinch zoom')
 else:
     raise SystemExit('Expected touch handler block not found in app.js')
+
+# The same build-preparation step also applies the practice-exam end-of-session behavior.
+# Importing the patch module executes its idempotent source transformation.
+import patch_simulation_autofinish  # noqa: E402,F401

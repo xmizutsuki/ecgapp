@@ -260,6 +260,28 @@
     overflow:visible!important;
   }
 
+  /* Mobile header controls live against the right safe edge instead of floating
+     near the left. This keeps PT / quick training / login aligned with the point
+     indicated in the mobile layout while respecting iPhone safe-area insets. */
+  .main>.topbar{
+    display:flex!important;
+    align-items:center!important;
+    justify-content:flex-end!important;
+    width:100%!important;
+    max-width:none!important;
+    box-sizing:border-box!important;
+    padding-left:16px!important;
+    padding-right:max(16px,env(safe-area-inset-right))!important;
+  }
+
+  .main>.topbar>.actions{
+    margin-left:auto!important;
+    width:auto!important;
+    max-width:100%!important;
+    flex:0 0 auto!important;
+    justify-content:flex-end!important;
+  }
+
   .topbar .beta-feedback-launcher{
     position:static!important;
     inset:auto!important;

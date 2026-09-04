@@ -1,66 +1,242 @@
-/* ECG Lab: custom simulations 20–80. */
-function shuffledCopy(items=[]){
-  const out=[...items];
-  for(let i=out.length-1;i>0;i--){
-    const j=Math.floor(Math.random()*(i+1));
-    [out[i],out[j]]=[out[j],out[i]];
+/* ECG Lab — persistent bilingual practice exams (20–80 questions).
+   Local-first persistence, optional Supabase sync, history, results, review and progress chart. */
+(function(){
+  const STORAGE_VERSION=4;
+  const STORAGE_PREFIX=`ecgLabSimulations:v${STORAGE_VERSION}:`;
+  const REMOTE_TABLE='simulations';
+  const REMOTE_ANSWERS='simulation_answers';
+
+  const runtime={
+    activeId:null,
+    startedAt:null,
+    questionStartedAt:null,
+    timer:null,
+    historyFilter:'all',
+    chartPeriod:'all',
+    reviewFilter:'all',
+    remoteLoadedFor:null,
+    syncing:false,
+    lastSyncError:null,
+  };
+
+  const txt={
+    pt:{
+      pageTitle:'Simulados',newExam:'+ Novo Simulado',subtitle:'Crie, continue, finalize e revise seus simulados sem perder o progresso.',
+      continueTitle:'Continuar Simulado',evolution:'Evolução nos Simulados',summary:'Resumo',history:'Histórico de Simulados',
+      all:'Todos',completed:'Concluídos',inProgress:'Em andamento',continue:'Continuar',viewResult:'Ver resultado',
+      questions:'questões',answered:'respondidas',lastActivity:'Última atividade',progress:'concluído',
+      completedLabel:'Concluído',inProgressLabel:'Em andamento',score:'Resultado',timeUsed:'Tempo utilizado',
+      completedExams:'Simulados concluídos',answeredQuestions:'Questões respondidas',averageScore:'Média de acertos',avgPerQuestion:'Tempo médio por questão',
+      sevenDays:'7 dias',thirtyDays:'30 dias',threeMonths:'3 meses',allPeriod:'Todo período',perExam:'Resultado por simulado',cumulative:'Média acumulada',
+      noHistory:'Nenhum simulado encontrado.',noInProgress:'Você não possui simulados em andamento.',noCompleted:'Conclua um simulado para acompanhar sua evolução.',
+      chooseCount:'Escolha a quantidade de questões',countHelp:'Monte um simulado com questões aleatórias de toda a biblioteca. Escolha entre 20 e 80 questões.',
+      numberQuestions:'Quantidade de questões',start:'Iniciar simulado',cancel:'Cancelar',
+      back:'← Voltar aos Simulados',question:'Questão',of:'de',elapsed:'Tempo',flag:'Marcar questão',unflag:'Desmarcar questão',previous:'Anterior',next:'Próxima',finish:'Finalizar simulado',
+      answeredStatus:'Respondida',unansweredStatus:'Não respondida',flaggedStatus:'Marcada',autosaved:'Progresso salvo automaticamente',
+      exitTitle:'Deseja sair do simulado?',exitBody:'Seu progresso será salvo automaticamente e você poderá continuar depois.',keepExam:'Continuar simulado',saveExit:'Salvar e sair',
+      finishTitle:'Finalizar simulado?',finishBody:'Depois de finalizar, as respostas não poderão ser alteradas. Questões não respondidas serão contabilizadas separadamente.',keepReview:'Continuar respondendo',confirmFinish:'Finalizar agora',
+      resultTitle:'Resultado do Simulado',correct:'Corretas',incorrect:'Incorretas',unanswered:'Não respondidas',totalTime:'Tempo total',averageTime:'Tempo médio',flagged:'Questões marcadas',review:'Revisar questões',backHistory:'Voltar aos Simulados',
+      reviewTitle:'Revisão das questões',rightAnswer:'Resposta correta',yourAnswer:'Sua resposta',explanation:'Explicação',notAnswered:'Não respondida',
+      onlineSaved:'Salvo neste dispositivo e sincronizado.',localSaved:'Salvo neste dispositivo.',offline:'Você está offline. Suas respostas continuarão sendo salvas neste dispositivo.',syncBack:'Conexão restaurada. Sincronizando o progresso…',
+      unavailable:'Simulado indisponível',needQuestions:'É necessário carregar pelo menos 20 questões para iniciar um simulado.',ecg:'ECG da questão',educational:'Traçado educacional vetorial • Lead II',imageUnavailable:'Traçado indisponível.',
+      today:'hoje',yesterday:'ontem',correctly:'corretas',wrong:'erradas',exam:'Simulado',
+      noReviewItems:'Nenhuma questão corresponde a este filtro.',allReview:'Todas',correctReview:'Corretas',incorrectReview:'Incorretas',flaggedReview:'Marcadas',
+      graphScore:'Nota',graphAverage:'Média',localOnly:'Persistência local ativa',cloudReady:'Sincronização em nuvem ativa',syncPending:'Aguardando sincronização',
+    },
+    en:{
+      pageTitle:'Practice Exams',newExam:'+ New Practice Exam',subtitle:'Create, resume, complete, and review practice exams without losing progress.',
+      continueTitle:'Continue Practice Exam',evolution:'Practice Exam Progress',summary:'Summary',history:'Practice Exam History',
+      all:'All',completed:'Completed',inProgress:'In progress',continue:'Continue',viewResult:'View result',
+      questions:'questions',answered:'answered',lastActivity:'Last activity',progress:'complete',
+      completedLabel:'Completed',inProgressLabel:'In progress',score:'Score',timeUsed:'Time used',
+      completedExams:'Completed exams',answeredQuestions:'Questions answered',averageScore:'Average score',avgPerQuestion:'Average time per question',
+      sevenDays:'7 days',thirtyDays:'30 days',threeMonths:'3 months',allPeriod:'All time',perExam:'Score by exam',cumulative:'Cumulative average',
+      noHistory:'No practice exams found.',noInProgress:'You have no practice exams in progress.',noCompleted:'Complete a practice exam to track your progress.',
+      chooseCount:'Choose the number of questions',countHelp:'Build a randomized practice exam from the full question library. Choose between 20 and 80 questions.',
+      numberQuestions:'Number of questions',start:'Start practice exam',cancel:'Cancel',
+      back:'← Back to Practice Exams',question:'Question',of:'of',elapsed:'Time',flag:'Flag question',unflag:'Unflag question',previous:'Previous',next:'Next',finish:'Finish practice exam',
+      answeredStatus:'Answered',unansweredStatus:'Unanswered',flaggedStatus:'Flagged',autosaved:'Progress saved automatically',
+      exitTitle:'Leave this practice exam?',exitBody:'Your progress will be saved automatically and you can continue later.',keepExam:'Continue practice exam',saveExit:'Save and exit',
+      finishTitle:'Finish practice exam?',finishBody:'After finishing, answers cannot be changed. Unanswered questions will be reported separately.',keepReview:'Keep answering',confirmFinish:'Finish now',
+      resultTitle:'Practice Exam Result',correct:'Correct',incorrect:'Incorrect',unanswered:'Unanswered',totalTime:'Total time',averageTime:'Average time',flagged:'Flagged questions',review:'Review questions',backHistory:'Back to Practice Exams',
+      reviewTitle:'Question Review',rightAnswer:'Correct answer',yourAnswer:'Your answer',explanation:'Explanation',notAnswered:'Unanswered',
+      onlineSaved:'Saved on this device and synced.',localSaved:'Saved on this device.',offline:'You are offline. Your answers will continue to be saved on this device.',syncBack:'Connection restored. Syncing progress…',
+      unavailable:'Practice exam unavailable',needQuestions:'At least 20 questions must be loaded before starting a practice exam.',ecg:'Question ECG',educational:'Educational vector tracing • Lead II',imageUnavailable:'Tracing unavailable.',
+      today:'today',yesterday:'yesterday',correctly:'correct',wrong:'incorrect',exam:'Practice Exam',
+      noReviewItems:'No questions match this filter.',allReview:'All',correctReview:'Correct',incorrectReview:'Incorrect',flaggedReview:'Flagged',
+      graphScore:'Score',graphAverage:'Average',localOnly:'Local persistence active',cloudReady:'Cloud sync active',syncPending:'Waiting to sync',
+    }
+  };
+
+  const L=()=>txt[window.ECG_LANG==='en'?'en':'pt'];
+  const isEn=()=>window.ECG_LANG==='en';
+  const safe=(v)=>typeof esc==='function'?esc(v):String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+  const nowIso=()=>new Date().toISOString();
+  const uuid=()=>crypto?.randomUUID?.()||`sim-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const userId=()=>state?.user?.id||(state?.demo?'demo-user':'guest');
+  const storageKey=()=>STORAGE_PREFIX+userId();
+  const hasCloud=()=>typeof sb!=='undefined'&&!!sb&&!!state?.user&&!state?.demo;
+
+  function shuffledCopy(items=[]){
+    const out=[...items];
+    for(let i=out.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[out[i],out[j]]=[out[j],out[i]]}
+    return out;
   }
-  return out;
-}
 
-function renderSims(){
-  const en=window.ECG_LANG==='en';
-  const el=document.getElementById('simulados');
-  if(!el)return;
-  const total=state.questions?.length||0;
-  if(total<20){
-    el.innerHTML=`<article class="card section"><div class="empty"><h3>${en?'Practice exam unavailable':'Simulado indisponível'}</h3><p>${en?'At least 20 questions must be loaded before starting a practice exam.':'É necessário carregar pelo menos 20 questões para iniciar um simulado.'}</p></div></article>`;
-    return;
+  function readSessions(){
+    try{const raw=JSON.parse(localStorage.getItem(storageKey())||'[]');return Array.isArray(raw)?raw:[]}catch{return []}
   }
-  const available=Math.min(80,total);
-  const initial=Math.min(40,available);
-  el.innerHTML=`<article class="card sim-builder">
-    <div class="sim-builder-copy"><span class="eyebrow">${en?'Custom practice exam':'Simulado personalizado'}</span><h2>${en?'Choose the number of questions':'Escolha a quantidade de questões'}</h2><p>${en?'Build a practice exam with randomized questions from the entire library. Choose between 20 and 80 questions.':'Monte um simulado com questões aleatórias de toda a biblioteca. Escolha entre 20 e 80 questões.'}</p></div>
-    <div class="sim-count-panel">
-      <div class="sim-count-head"><label for="simCountRange">${en?'Number of questions':'Quantidade de questões'}</label><strong id="simCountValue">${initial}</strong></div>
-      <input id="simCountRange" class="sim-range" type="range" min="20" max="${available}" step="1" value="${initial}" aria-label="${en?'Number of questions in the practice exam':'Quantidade de questões do simulado'}">
-      <div class="sim-range-labels"><span>20</span><span>${available}</span></div>
-      <div class="sim-quick-counts">${[20,40,60,80].filter(n=>n<=available).map(n=>`<button class="chip${n===initial?' active':''}" type="button" data-sim-count="${n}">${n}</button>`).join('')}</div>
-      <button class="btn btn-primary full sim-start-btn" id="startCustomSim">${en?'Start practice exam':'Começar simulado'}</button>
-      <p class="muted sim-count-note">${en?'Questions are shuffled on every attempt. Your score is shown at the end.':'As questões são embaralhadas a cada tentativa. O resultado aparece ao final.'}</p>
-    </div>
-  </article><div id="simRunner" style="margin-top:16px"></div>`;
-  const range=document.getElementById('simCountRange'),value=document.getElementById('simCountValue');
-  const sync=()=>{const n=Number(range.value);value.textContent=n;document.querySelectorAll('[data-sim-count]').forEach(b=>b.classList.toggle('active',Number(b.dataset.simCount)===n))};
-  range.oninput=sync;
-  document.querySelectorAll('[data-sim-count]').forEach(b=>b.onclick=()=>{range.value=b.dataset.simCount;sync()});
-  document.getElementById('startCustomSim').onclick=()=>startSim(Number(range.value));
-  sync();
-}
+  function writeSessions(items){
+    try{localStorage.setItem(storageKey(),JSON.stringify(items));return true}catch(e){console.warn('Simulation local persistence:',e);return false}
+  }
+  function upsertLocal(session){
+    const list=readSessions(),i=list.findIndex(x=>x.id===session.id);if(i>=0)list[i]=session;else list.unshift(session);
+    list.sort((a,b)=>new Date(b.updated_at||b.created_at)-new Date(a.updated_at||a.created_at));writeSessions(list);return list;
+  }
+  function getLocal(id){return readSessions().find(x=>x.id===id)||null}
+  function nextNumber(){return Math.max(0,...readSessions().map(x=>Number(x.number)||0))+1}
 
-async function startSim(n){
-  const total=state.questions?.length||0;
-  const en=window.ECG_LANG==='en';
-  if(total<20){toast(en?'At least 20 questions are required.':'São necessárias pelo menos 20 questões.');return}
-  n=Math.max(20,Math.min(80,Math.round(Number(n)||20),total));
-  state.sim=shuffledCopy(state.questions).slice(0,n);state.simIndex=0;state.simScore=0;state.simAttemptId=null;state.simSaved=false;
-  if(sb&&state.user&&!state.demo){const {data}=await sb.from('simulation_attempts').insert({user_id:state.user.id,title:'Simulado ECG Lab',total_questions:state.sim.length,correct_answers:0}).select('id').single();state.simAttemptId=data?.id||null}
-  renderSimQuestion();
-}
+  function optionData(q){return (q?.options||[]).map((o,i)=>({index:i,label:Array.isArray(o)?o[0]:o?.label,correct:!!(Array.isArray(o)?o[1]:o?.is_correct)}))}
+  function questionSnapshot(q){
+    const ecg=typeof caseById==='function'?caseById(q?.ecg_case_id):null;
+    return {id:String(q?.id||''),ecg_case_id:q?.ecg_case_id||null,prompt:q?.prompt||'',explanation:q?.explanation||ecg?.explanation||'',options:optionData(q).map(o=>({label:o.label,correct:o.correct})),image_url:ecg?.image_url||'',diagnosis:ecg?.diagnosis||'',category:q?.category||ecg?.category||''};
+  }
+  function findQuestion(id,session){
+    const q=(state?.questions||[]).find(x=>String(x.id)===String(id));if(q)return q;
+    const snap=session?.question_snapshots?.[id];if(!snap)return null;
+    return {id:snap.id,ecg_case_id:snap.ecg_case_id,prompt:snap.prompt,explanation:snap.explanation,options:(snap.options||[]).map(o=>({label:o.label,is_correct:o.correct})),_snapshot:snap};
+  }
+  function ecgFor(q,session){
+    const live=typeof caseById==='function'?caseById(q?.ecg_case_id):null;if(live)return live;
+    const snap=session?.question_snapshots?.[String(q?.id||'')];return snap?{image_url:snap.image_url,diagnosis:snap.diagnosis,explanation:snap.explanation}:null;
+  }
 
-function renderSimQuestion(){
-  const en=window.ECG_LANG==='en';const box=document.getElementById('simRunner');
-  if(!box)return;
-  if(!state.sim||state.simIndex>=state.sim.length){saveSimResult();box.innerHTML=`<article class="card section"><h3>${en?'Result':'Resultado'}</h3><p class="muted">${en?'You answered':'Você acertou'} <strong>${state.simScore}</strong> ${en?'of':'de'} <strong>${state.sim?.length||0}</strong> ${en?'questions correctly.':'questões.'}</p><button class="btn btn-primary" onclick="startSim(${state.sim?.length||20})">${en?'Try again':'Refazer'}</button></article>`;return}
-  const q=state.sim[state.simIndex];
-  box.innerHTML=`<article class="card question"><span class="eyebrow">${state.simIndex+1}/${state.sim.length}</span><h2>${esc(q.prompt)}</h2><div class="answers">${q.options.map((o,i)=>`<button class="answer" data-simopt="${i}">${esc(Array.isArray(o)?o[0]:o.label)}</button>`).join('')}</div><div class="feedback" id="simFeedback"><strong></strong><p style="margin-bottom:0"></p></div></article>`;
-  box.querySelectorAll('[data-simopt]').forEach(b=>b.onclick=()=>{
-    const i=Number(b.dataset.simopt),o=q.options[i],ok=Array.isArray(o)?o[1]:o.is_correct;
-    if(ok)state.simScore++;
-    box.querySelectorAll('[data-simopt]').forEach((x,ix)=>{const oo=q.options[ix],yes=Array.isArray(oo)?oo[1]:oo.is_correct;if(yes)x.classList.add('correct');if(ix===i&&!ok)x.classList.add('wrong');x.disabled=true});
-    const f=document.getElementById('simFeedback');if(f){f.classList.add('show');f.querySelector('strong').textContent=ok?(en?'✓ Correct':'✓ Correto'):(en?'Incorrect answer':'Resposta incorreta');f.querySelector('p').textContent=q.explanation}
-    setTimeout(()=>{state.simIndex++;renderSimQuestion()},1100)
-  })
-}
+  function createSession(n){
+    const qs=shuffledCopy(state.questions||[]).slice(0,n),snapshots={};qs.forEach(q=>{snapshots[String(q.id)]=questionSnapshot(q)});const t=nowIso();
+    return {id:uuid(),user_id:userId(),number:nextNumber(),language:window.ECG_LANG||'pt-BR',created_at:t,updated_at:t,completed_at:null,status:'in_progress',total_questions:qs.length,current_question_index:0,question_ids:qs.map(q=>String(q.id)),question_snapshots:snapshots,answers:{},flagged_question_ids:[],elapsed_seconds:0,correct_answers:0,incorrect_answers:0,unanswered_questions:qs.length,score_percentage:null,average_time_per_question:null,sync_pending:true};
+  }
 
-try { if(document.getElementById('trilha')) renderTrail(); if(document.getElementById('simulados')) renderSims(); } catch(e){ console.warn('ECG Lab feature refresh failed',e); }
+  function answeredCount(s){return Object.values(s.answers||{}).filter(a=>Number.isInteger(a?.selected_answer)).length}
+  function flaggedCount(s){return (s.flagged_question_ids||[]).length}
+  function progressPct(s){return s.total_questions?Math.round(answeredCount(s)/s.total_questions*100):0}
+  function liveElapsed(s){let sec=Number(s.elapsed_seconds)||0;if(runtime.activeId===s.id&&runtime.startedAt)sec+=(Date.now()-runtime.startedAt)/1000;return Math.max(0,Math.round(sec))}
+  function commitElapsed(s,keepRunning=true){if(runtime.activeId===s.id&&runtime.startedAt){s.elapsed_seconds=liveElapsed(s);runtime.startedAt=keepRunning?Date.now():null}}
+  function formatDuration(sec){sec=Math.max(0,Math.round(Number(sec)||0));const h=Math.floor(sec/3600),m=Math.floor((sec%3600)/60),s=sec%60;if(h)return `${h}h${String(m).padStart(2,'0')}min`;if(m)return `${m}m${String(s).padStart(2,'0')}s`;return `${s}s`}
+  function formatDate(v){try{return new Intl.DateTimeFormat(isEn()?'en-US':'pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'}).format(new Date(v))}catch{return '—'}}
+  function relativeDate(v){const d=new Date(v),n=new Date();if(Number.isNaN(d.getTime()))return '—';const a=new Date(n.getFullYear(),n.getMonth(),n.getDate()),b=new Date(d.getFullYear(),d.getMonth(),d.getDate()),diff=Math.round((a-b)/86400000);if(diff===0)return L().today;if(diff===1)return L().yesterday;return formatDate(v)}
+  function examName(s){return `${L().exam} #${s.number||'—'}`}
+
+  function persistSession(session,{keepRunning=true,sync=true}={}){
+    commitElapsed(session,keepRunning);session.updated_at=nowIso();session.sync_pending=hasCloud();upsertLocal(session);updateSaveStatus(session);if(sync&&navigator.onLine!==false)void syncSession(session);
+  }
+
+  async function syncSession(session){
+    if(!hasCloud()||!navigator.onLine)return false;
+    try{
+      const row={id:session.id,user_id:state.user.id,title:`ECG Lab ${examName(session)}`,language:session.language||'pt-BR',created_at:session.created_at,updated_at:session.updated_at,completed_at:session.completed_at,status:session.status,total_questions:session.total_questions,current_question_index:session.current_question_index,question_ids:session.question_ids,flagged_question_ids:session.flagged_question_ids||[],correct_answers:session.correct_answers||0,incorrect_answers:session.incorrect_answers||0,unanswered_questions:session.unanswered_questions??(session.total_questions-answeredCount(session)),score_percentage:session.score_percentage,elapsed_time:Math.round(session.elapsed_seconds||0),average_time_per_question:session.average_time_per_question};
+      const {error}=await sb.from(REMOTE_TABLE).upsert(row,{onConflict:'id'});if(error)throw error;
+      const answerRows=[];for(const qid of session.question_ids||[]){const a=session.answers?.[qid],flagged=(session.flagged_question_ids||[]).includes(qid);if(!a&&!flagged)continue;answerRows.push({simulation_id:session.id,question_id:qid,selected_answer:Number.isInteger(a?.selected_answer)?a.selected_answer:null,is_correct:typeof a?.is_correct==='boolean'?a.is_correct:null,is_flagged:flagged,answered_at:a?.answered_at||null,response_time:Math.round(a?.response_time||0),question_snapshot:session.question_snapshots?.[qid]||null})}
+      if(answerRows.length){const {error:ae}=await sb.from(REMOTE_ANSWERS).upsert(answerRows,{onConflict:'simulation_id,question_id'});if(ae)throw ae}
+      session.sync_pending=false;runtime.lastSyncError=null;upsertLocal(session);updateSaveStatus(session);return true;
+    }catch(e){runtime.lastSyncError=e?.message||String(e);session.sync_pending=true;upsertLocal(session);updateSaveStatus(session);console.warn('Simulation cloud sync:',e);return false}
+  }
+
+  async function loadRemoteSessions(){
+    if(!hasCloud())return false;const uid=state.user.id;if(runtime.remoteLoadedFor===uid)return false;runtime.remoteLoadedFor=uid;
+    try{
+      const {data,error}=await sb.from(REMOTE_TABLE).select('*,simulation_answers(*)').eq('user_id',uid).order('updated_at',{ascending:false});if(error)throw error;
+      const local=readSessions(),byId=new Map(local.map(s=>[s.id,s]));
+      for(const r of data||[]){
+        const answers={},snapshots={},flags=new Set(r.flagged_question_ids||[]);for(const a of r.simulation_answers||[]){answers[a.question_id]={selected_answer:a.selected_answer,is_correct:a.is_correct,answered_at:a.answered_at,response_time:a.response_time||0};if(a.is_flagged)flags.add(a.question_id);if(a.question_snapshot)snapshots[a.question_id]=a.question_snapshot}
+        const remote={id:r.id,user_id:r.user_id,number:Number(String(r.title||'').match(/#(\d+)/)?.[1])||0,language:r.language||'pt-BR',created_at:r.created_at,updated_at:r.updated_at,completed_at:r.completed_at,status:r.status,total_questions:r.total_questions,current_question_index:r.current_question_index||0,question_ids:r.question_ids||[],question_snapshots:snapshots,answers,flagged_question_ids:[...flags],elapsed_seconds:r.elapsed_time||0,correct_answers:r.correct_answers||0,incorrect_answers:r.incorrect_answers||0,unanswered_questions:r.unanswered_questions??0,score_percentage:r.score_percentage==null?null:Number(r.score_percentage),average_time_per_question:r.average_time_per_question==null?null:Number(r.average_time_per_question),sync_pending:false};
+        const existing=byId.get(remote.id);if(!existing||new Date(remote.updated_at)>new Date(existing.updated_at||0))byId.set(remote.id,{...existing,...remote,question_snapshots:{...(existing?.question_snapshots||{}),...remote.question_snapshots}});
+      }
+      writeSessions([...byId.values()].sort((a,b)=>new Date(b.updated_at)-new Date(a.updated_at)));return true;
+    }catch(e){runtime.lastSyncError=e?.message||String(e);console.warn('Simulation cloud load:',e);return false}
+  }
+  async function syncAllPending(){if(runtime.syncing||!hasCloud()||!navigator.onLine)return;runtime.syncing=true;try{for(const s of readSessions().filter(x=>x.sync_pending))await syncSession(s)}finally{runtime.syncing=false}}
+
+  function updateSaveStatus(session){
+    const el=document.getElementById('simSaveStatus');if(!el)return;
+    if(navigator.onLine===false){el.textContent=L().offline;el.classList.add('offline');return}el.classList.remove('offline');
+    if(session?.sync_pending&&hasCloud())el.textContent=L().syncPending;else el.textContent=hasCloud()?L().onlineSaved:L().localSaved;
+  }
+
+  function showModal({title,body,actions=[]}){
+    let root=document.getElementById('simModalRoot');if(root)root.remove();root=document.createElement('div');root.id='simModalRoot';root.className='sim-modal-backdrop';root.innerHTML=`<div class="sim-modal card" role="dialog" aria-modal="true" aria-labelledby="simModalTitle"><h3 id="simModalTitle">${safe(title)}</h3><p>${safe(body)}</p><div class="sim-modal-actions">${actions.map((a,i)=>`<button class="btn ${a.primary?'btn-primary':'btn-ghost'}" data-sim-modal-action="${i}">${safe(a.label)}</button>`).join('')}</div></div>`;document.body.appendChild(root);root.querySelectorAll('[data-sim-modal-action]').forEach(b=>b.onclick=()=>{const a=actions[Number(b.dataset.simModalAction)];if(a?.close!==false)root.remove();a?.onClick?.()});return root;
+  }
+
+  function openNewModal(){
+    const max=Math.min(80,state.questions?.length||0),initial=Math.min(40,max);if(max<20){toast?.(L().needQuestions);return}
+    let root=document.getElementById('simModalRoot');if(root)root.remove();root=document.createElement('div');root.id='simModalRoot';root.className='sim-modal-backdrop';root.innerHTML=`<div class="sim-modal card sim-new-modal" role="dialog" aria-modal="true"><h3>${safe(L().chooseCount)}</h3><p>${safe(L().countHelp)}</p><div class="sim-count-head"><label>${safe(L().numberQuestions)}</label><strong id="simNewCountValue">${initial}</strong></div><input id="simNewCount" class="sim-range" type="range" min="20" max="${max}" step="1" value="${initial}"><div class="sim-range-labels"><span>20</span><span>${max}</span></div><div class="sim-quick-counts">${[20,40,60,80].filter(n=>n<=max).map(n=>`<button type="button" class="chip${n===initial?' active':''}" data-new-count="${n}">${n}</button>`).join('')}</div><div class="sim-modal-actions"><button class="btn btn-ghost" id="simNewCancel">${safe(L().cancel)}</button><button class="btn btn-primary" id="simNewStart">${safe(L().start)}</button></div></div>`;document.body.appendChild(root);
+    const range=root.querySelector('#simNewCount'),value=root.querySelector('#simNewCountValue'),sync=()=>{value.textContent=range.value;root.querySelectorAll('[data-new-count]').forEach(b=>b.classList.toggle('active',Number(b.dataset.newCount)===Number(range.value)))};range.oninput=sync;root.querySelectorAll('[data-new-count]').forEach(b=>b.onclick=()=>{range.value=b.dataset.newCount;sync()});root.querySelector('#simNewCancel').onclick=()=>root.remove();root.querySelector('#simNewStart').onclick=()=>{const n=Number(range.value);root.remove();startNewSimulation(n)};
+  }
+
+  function startNewSimulation(n){const total=state.questions?.length||0;if(total<20){toast?.(L().needQuestions);return}n=Math.max(20,Math.min(80,Math.round(Number(n)||20),total));const session=createSession(n);upsertLocal(session);openSession(session.id)}
+  function openSession(id){const s=getLocal(id);if(!s||s.status!=='in_progress')return renderSimulationHome();runtime.activeId=s.id;runtime.startedAt=Date.now();runtime.questionStartedAt=Date.now();state.simAttemptId=s.id;state.simIndex=s.current_question_index||0;renderRunner(s);startTimer(s)}
+  function stopTimer(){if(runtime.timer){clearInterval(runtime.timer);runtime.timer=null}}
+  function startTimer(session){stopTimer();runtime.timer=setInterval(()=>{const e=document.getElementById('simElapsed');if(e)e.textContent=formatDuration(liveElapsed(session))},1000)}
+  function saveCurrentQuestionTime(session,qid){if(!runtime.questionStartedAt)return;const a=session.answers?.[qid];if(a&&Number.isInteger(a.selected_answer))a.response_time=Math.max(Number(a.response_time)||0,Math.round((Date.now()-runtime.questionStartedAt)/1000));runtime.questionStartedAt=Date.now()}
+  function navigate(session,index){const current=session.question_ids[session.current_question_index];saveCurrentQuestionTime(session,current);session.current_question_index=Math.max(0,Math.min(session.total_questions-1,index));persistSession(session);runtime.questionStartedAt=Date.now();renderRunner(session)}
+  function chooseAnswer(session,qid,index){const q=findQuestion(qid,session);if(!q)return;const opt=optionData(q)[index];if(!opt)return;const previous=session.answers?.[qid]||{};session.answers=session.answers||{};session.answers[qid]={...previous,selected_answer:index,is_correct:!!opt.correct,answered_at:nowIso(),response_time:previous.response_time||Math.max(1,Math.round((Date.now()-(runtime.questionStartedAt||Date.now()))/1000))};persistSession(session);renderRunner(session)}
+  function toggleFlag(session,qid){const set=new Set(session.flagged_question_ids||[]);if(set.has(qid))set.delete(qid);else set.add(qid);session.flagged_question_ids=[...set];persistSession(session);renderRunner(session)}
+
+  function renderRunner(session){
+    const el=document.getElementById('simulados');if(!el)return;state.simIndex=session.current_question_index;const qid=session.question_ids[session.current_question_index],q=findQuestion(qid,session);if(!q){el.innerHTML=`<article class="card section"><h3>${safe(L().unavailable)}</h3><p>${safe(L().needQuestions)}</p></article>`;return}
+    const ecg=ecgFor(q,session),selected=session.answers?.[qid]?.selected_answer,flagged=(session.flagged_question_ids||[]).includes(qid),opts=optionData(q),answered=answeredCount(session);
+    el.innerHTML=`<div class="sim-runner-shell"><div class="sim-runner-head card"><div><button class="btn btn-ghost" id="simExitBtn">${safe(L().back)}</button><div class="sim-runner-title"><span class="eyebrow">${safe(examName(session))}</span><strong>${safe(L().question)} ${session.current_question_index+1} ${safe(L().of)} ${session.total_questions}</strong></div></div><div class="sim-runner-meta"><span>${safe(L().answeredStatus)} <b>${answered}/${session.total_questions}</b></span><span>${safe(L().elapsed)} <b id="simElapsed">${formatDuration(liveElapsed(session))}</b></span></div></div><div id="simOfflineBanner" class="sim-offline-banner${navigator.onLine===false?' show':''}">${safe(L().offline)}</div><div class="sim-question-layout"><article class="card sim-ecg-panel"><div class="sim-ecg-head"><div><strong>${safe(L().ecg)}</strong><small>${safe(L().educational)}</small></div><span class="badge">${session.current_question_index+1}/${session.total_questions}</span></div>${ecg?.image_url?`<div class="sim-ecg-stage"><img class="sim-ecg-image" src="${safe(ecg.image_url)}" alt="${safe(isEn()?'Educational ECG tracing for this question':'Traçado educacional de ECG desta questão')}"></div>`:`<div class="sim-ecg-empty">${safe(L().imageUnavailable)}</div>`}</article><article class="card sim-question-panel"><div class="sim-question-top"><span class="eyebrow">${safe(L().question)} ${session.current_question_index+1}</span><button class="chip sim-flag-btn${flagged?' active':''}" id="simFlagBtn">${flagged?'★':'☆'} ${safe(flagged?L().unflag:L().flag)}</button></div><h2>${safe(q.prompt)}</h2><div class="answers sim-exam-answers">${opts.map(o=>`<button class="answer${selected===o.index?' selected':''}" data-sim-answer="${o.index}">${safe(o.label)}</button>`).join('')}</div><div class="sim-autosave" id="simSaveStatus">${safe(L().autosaved)}</div><div class="sim-runner-actions"><button class="btn btn-ghost" id="simPrev" ${session.current_question_index===0?'disabled':''}>← ${safe(L().previous)}</button><button class="btn btn-secondary" id="simNext" ${session.current_question_index===session.total_questions-1?'disabled':''}>${safe(L().next)} →</button><button class="btn btn-primary" id="simFinish">${safe(L().finish)}</button></div></article></div><article class="card sim-palette"><div class="sim-palette-head"><strong>${safe(examName(session))}</strong><span>${answered}/${session.total_questions} ${safe(L().answered)}</span></div><div class="sim-palette-grid">${session.question_ids.map((id,i)=>{const a=session.answers?.[id],f=(session.flagged_question_ids||[]).includes(id);return `<button class="sim-palette-item${i===session.current_question_index?' current':''}${Number.isInteger(a?.selected_answer)?' answered':''}${f?' flagged':''}" data-sim-jump="${i}" title="${safe(Number.isInteger(a?.selected_answer)?L().answeredStatus:L().unansweredStatus)}${f?' • '+safe(L().flaggedStatus):''}">${i+1}${f?'<span>★</span>':''}</button>`}).join('')}</div></article></div>`;
+    updateSaveStatus(session);el.querySelectorAll('[data-sim-answer]').forEach(b=>b.onclick=()=>chooseAnswer(session,qid,Number(b.dataset.simAnswer)));el.querySelectorAll('[data-sim-jump]').forEach(b=>b.onclick=()=>navigate(session,Number(b.dataset.simJump)));document.getElementById('simFlagBtn').onclick=()=>toggleFlag(session,qid);document.getElementById('simPrev').onclick=()=>navigate(session,session.current_question_index-1);document.getElementById('simNext').onclick=()=>navigate(session,session.current_question_index+1);document.getElementById('simExitBtn').onclick=()=>confirmExit(session);document.getElementById('simFinish').onclick=()=>confirmFinish(session);
+  }
+
+  function confirmExit(session){showModal({title:L().exitTitle,body:L().exitBody,actions:[{label:L().keepExam},{label:L().saveExit,primary:true,onClick:()=>{commitElapsed(session,false);persistSession(session,{keepRunning:false});stopTimer();runtime.activeId=null;runtime.startedAt=null;runtime.questionStartedAt=null;renderSimulationHome()}}]})}
+  function confirmFinish(session){showModal({title:L().finishTitle,body:L().finishBody,actions:[{label:L().keepReview},{label:L().confirmFinish,primary:true,onClick:()=>finalizeSession(session)}]})}
+  function finalizeSession(session){
+    const qid=session.question_ids[session.current_question_index];saveCurrentQuestionTime(session,qid);commitElapsed(session,false);stopTimer();let correct=0,incorrect=0,unanswered=0;for(const id of session.question_ids){const a=session.answers?.[id];if(!Number.isInteger(a?.selected_answer))unanswered++;else if(a.is_correct)correct++;else incorrect++}
+    session.status='completed';session.completed_at=nowIso();session.correct_answers=correct;session.incorrect_answers=incorrect;session.unanswered_questions=unanswered;session.score_percentage=session.total_questions?Math.round(correct/session.total_questions*100):0;session.average_time_per_question=session.total_questions?Math.round((session.elapsed_seconds||0)/session.total_questions):0;runtime.activeId=null;runtime.startedAt=null;runtime.questionStartedAt=null;persistSession(session,{keepRunning:false});renderResult(session.id);
+  }
+
+  function renderResult(id){
+    const session=getLocal(id),el=document.getElementById('simulados');if(!session||!el)return renderSimulationHome();const score=Math.round(Number(session.score_percentage)||0);
+    el.innerHTML=`<div class="sim-result-wrap"><div class="sim-result-hero card"><span class="eyebrow">${safe(examName(session))}</span><h2>${safe(L().resultTitle)}</h2><div class="sim-score-ring"><strong>${score}%</strong><span>${session.correct_answers} ${safe(L().of)} ${session.total_questions} ${safe(L().correctly)}</span></div></div><div class="grid sim-result-stats"><article class="card stat"><span>${safe(L().correct)}</span><strong>${session.correct_answers}</strong></article><article class="card stat"><span>${safe(L().incorrect)}</span><strong>${session.incorrect_answers}</strong></article><article class="card stat"><span>${safe(L().unanswered)}</span><strong>${session.unanswered_questions}</strong></article><article class="card stat"><span>${safe(L().totalTime)}</span><strong>${formatDuration(session.elapsed_seconds)}</strong></article><article class="card stat"><span>${safe(L().averageTime)}</span><strong>${formatDuration(session.average_time_per_question)}</strong></article><article class="card stat"><span>${safe(L().flagged)}</span><strong>${flaggedCount(session)}</strong></article></div><div class="sim-result-actions"><button class="btn btn-primary" id="simReviewBtn">${safe(L().review)}</button><button class="btn btn-ghost" id="simResultBack">${safe(L().backHistory)}</button></div></div>`;document.getElementById('simReviewBtn').onclick=()=>renderReview(session.id,'all');document.getElementById('simResultBack').onclick=()=>renderSimulationHome();
+  }
+
+  function correctIndex(q){return optionData(q).find(x=>x.correct)?.index??null}
+  function renderReview(id,filter='all'){
+    const session=getLocal(id),el=document.getElementById('simulados');if(!session||!el)return renderSimulationHome();runtime.reviewFilter=filter;
+    const items=session.question_ids.map((qid,i)=>{const q=findQuestion(qid,session),a=session.answers?.[qid],f=(session.flagged_question_ids||[]).includes(qid);return {qid,i,q,a,f}}).filter(x=>x.q).filter(x=>filter==='all'||(filter==='correct'&&x.a?.is_correct===true)||(filter==='incorrect'&&Number.isInteger(x.a?.selected_answer)&&x.a?.is_correct===false)||(filter==='flagged'&&x.f));
+    el.innerHTML=`<div class="sim-review-head card"><div><button class="btn btn-ghost" id="simReviewBack">← ${safe(L().resultTitle)}</button><span class="eyebrow">${safe(examName(session))}</span><h2>${safe(L().reviewTitle)}</h2></div><div class="sim-filter-row">${[['all',L().allReview],['correct',L().correctReview],['incorrect',L().incorrectReview],['flagged',L().flaggedReview]].map(([k,label])=>`<button class="chip${filter===k?' active':''}" data-review-filter="${k}">${safe(label)}</button>`).join('')}</div></div><div class="sim-review-list">${items.length?items.map(x=>reviewCard(session,x)).join(''):`<article class="card section"><p class="muted">${safe(L().noReviewItems)}</p></article>`}</div>`;document.getElementById('simReviewBack').onclick=()=>renderResult(id);el.querySelectorAll('[data-review-filter]').forEach(b=>b.onclick=()=>renderReview(id,b.dataset.reviewFilter));
+  }
+  function reviewCard(session,{qid,i,q,a,f}){
+    const ecg=ecgFor(q,session),opts=optionData(q),ci=correctIndex(q),selected=Number.isInteger(a?.selected_answer)?a.selected_answer:null,chosen=selected==null?L().notAnswered:(opts[selected]?.label||'—'),correct=ci==null?'—':(opts[ci]?.label||'—'),status=selected==null?'unanswered':a.is_correct?'correct':'incorrect';
+    return `<article class="card sim-review-card ${status}"><div class="sim-review-card-head"><div><span class="badge">${safe(L().question)} ${i+1}</span>${f?`<span class="badge flagged">★ ${safe(L().flaggedStatus)}</span>`:''}</div><strong>${status==='correct'?`✓ ${safe(L().correct)}`:status==='incorrect'?`✕ ${safe(L().incorrect)}`:safe(L().unanswered)}</strong></div><div class="sim-review-grid"><div>${ecg?.image_url?`<img class="sim-review-ecg" src="${safe(ecg.image_url)}" alt="${safe(L().ecg)}">`:''}</div><div><h3>${safe(q.prompt)}</h3><div class="sim-answer-summary"><div><small>${safe(L().yourAnswer)}</small><p>${safe(chosen)}</p></div><div><small>${safe(L().rightAnswer)}</small><p>${safe(correct)}</p></div></div><div class="sim-review-explanation"><small>${safe(L().explanation)}</small><p>${safe(q.explanation||ecg?.explanation||'—')}</p></div></div></div></article>`;
+  }
+
+  function filteredCompleted(sessions){const completed=sessions.filter(s=>s.status==='completed'&&Number.isFinite(Number(s.score_percentage))).sort((a,b)=>new Date(a.completed_at||a.updated_at)-new Date(b.completed_at||b.updated_at));if(runtime.chartPeriod==='all')return completed;const days=runtime.chartPeriod==='7'?7:runtime.chartPeriod==='30'?30:90,cut=Date.now()-days*86400000;return completed.filter(s=>new Date(s.completed_at||s.updated_at).getTime()>=cut)}
+  function chartSvg(sessions){
+    const data=filteredCompleted(sessions);if(!data.length)return `<div class="sim-chart-empty">${safe(L().noCompleted)}</div>`;const w=820,h=280,p=42,plotW=w-p*2,plotH=h-p*2,n=data.length;let running=0;const scorePts=[],avgPts=[];data.forEach((s,i)=>{const score=Number(s.score_percentage)||0;running+=score;const avg=running/(i+1),x=p+(n===1?plotW/2:i*plotW/(n-1)),ys=p+plotH-(score/100)*plotH,ya=p+plotH-(avg/100)*plotH;scorePts.push(`${x.toFixed(1)},${ys.toFixed(1)}`);avgPts.push(`${x.toFixed(1)},${ya.toFixed(1)}`)});const grid=[0,25,50,75,100].map(v=>{const y=p+plotH-(v/100)*plotH;return `<line x1="${p}" y1="${y}" x2="${w-p}" y2="${y}" class="sim-chart-grid"/><text x="${p-10}" y="${y+4}" text-anchor="end">${v}%</text>`}).join(''),dots=data.map((s,i)=>{const x=p+(n===1?plotW/2:i*plotW/(n-1)),y=p+plotH-(Number(s.score_percentage)/100)*plotH;return `<circle cx="${x}" cy="${y}" r="4" class="sim-chart-dot"><title>${safe(examName(s))}: ${Math.round(s.score_percentage)}%</title></circle>`}).join('');return `<div class="sim-chart-legend"><span><i class="score"></i>${safe(L().perExam)}</span><span><i class="avg"></i>${safe(L().cumulative)}</span></div><svg class="sim-chart" viewBox="0 0 ${w} ${h}" role="img" aria-label="${safe(L().evolution)}">${grid}<polyline points="${scorePts.join(' ')}" class="sim-chart-line score"/><polyline points="${avgPts.join(' ')}" class="sim-chart-line avg"/>${dots}</svg>`;
+  }
+  function summaryStats(sessions){const completed=sessions.filter(s=>s.status==='completed'),answered=sessions.reduce((n,s)=>n+answeredCount(s),0),avg=completed.length?Math.round(completed.reduce((n,s)=>n+Number(s.score_percentage||0),0)/completed.length):0,totalQ=completed.reduce((n,s)=>n+Number(s.total_questions||0),0),totalSec=completed.reduce((n,s)=>n+Number(s.elapsed_seconds||0),0),avgTime=totalQ?Math.round(totalSec/totalQ):0;return {completed:completed.length,answered,avg,avgTime}}
+  function historyItem(s){const inProgress=s.status==='in_progress',answered=answeredCount(s),progress=progressPct(s);return `<article class="card sim-history-item"><div class="sim-history-date">${safe(formatDate(s.created_at))}</div><div class="sim-history-main"><div class="sim-history-title"><h3>${safe(examName(s))}</h3><span class="badge ${inProgress?'warning':'success'}">${safe(inProgress?L().inProgressLabel:L().completedLabel)}</span></div><div class="sim-history-meta"><span>${s.total_questions} ${safe(L().questions)}</span>${inProgress?`<span>${answered}/${s.total_questions} ${safe(L().answered)}</span><span>${safe(L().timeUsed)}: ${formatDuration(s.elapsed_seconds||0)}</span><span>${safe(L().lastActivity)}: ${safe(relativeDate(s.updated_at))}</span>`:`<span>${Math.round(s.score_percentage||0)}%</span><span>${s.correct_answers} ${safe(L().correctly)}</span><span>${s.incorrect_answers} ${safe(L().wrong)}</span><span>${formatDuration(s.elapsed_seconds||0)}</span>`}</div>${inProgress?`<div class="sim-progress"><i style="width:${progress}%"></i></div>`:''}</div><div class="sim-history-action"><button class="btn ${inProgress?'btn-primary':'btn-secondary'}" data-${inProgress?'continue-sim':'result-sim'}="${safe(s.id)}">${safe(inProgress?L().continue:L().viewResult)}</button></div></article>`}
+
+  async function renderSimulationHome(){
+    stopTimer();runtime.activeId=null;runtime.startedAt=null;runtime.questionStartedAt=null;const el=document.getElementById('simulados');if(!el)return;const total=state.questions?.length||0;if(total<20){el.innerHTML=`<article class="card section"><div class="empty"><h3>${safe(L().unavailable)}</h3><p>${safe(L().needQuestions)}</p></div></article>`;return}
+    const sessions=readSessions(),inProgress=sessions.filter(s=>s.status==='in_progress').sort((a,b)=>new Date(b.updated_at)-new Date(a.updated_at)),stats=summaryStats(sessions);let history=sessions;if(runtime.historyFilter==='completed')history=history.filter(s=>s.status==='completed');if(runtime.historyFilter==='in_progress')history=history.filter(s=>s.status==='in_progress');
+    el.innerHTML=`<div class="sim-home"><div class="sim-home-header"><div><span class="eyebrow">ECG Lab</span><h2>${safe(L().pageTitle)}</h2><p>${safe(L().subtitle)}</p></div><button class="btn btn-primary" id="newSimBtn">${safe(L().newExam)}</button></div>${inProgress.length?`<section class="sim-section"><div class="section-head"><h3>${safe(L().continueTitle)}</h3><span class="badge">${inProgress.length}</span></div><div class="sim-continue-grid">${inProgress.map(s=>`<article class="card sim-continue-card"><div class="sim-continue-top"><div><span class="eyebrow">${safe(examName(s))}</span><h3>${s.total_questions} ${safe(L().questions)}</h3></div><strong>${progressPct(s)}%</strong></div><p>${answeredCount(s)} ${safe(L().of)} ${s.total_questions} ${safe(L().answered)} • ${safe(L().lastActivity)}: ${safe(relativeDate(s.updated_at))}</p><div class="sim-progress"><i style="width:${progressPct(s)}%"></i></div><button class="btn btn-primary full" data-continue-sim="${safe(s.id)}">${safe(L().continue)}</button></article>`).join('')}</div></section>`:''}<section class="sim-section"><div class="section-head"><div><h3>${safe(L().evolution)}</h3></div><div class="sim-filter-row">${[['7',L().sevenDays],['30',L().thirtyDays],['90',L().threeMonths],['all',L().allPeriod]].map(([k,label])=>`<button class="chip${runtime.chartPeriod===k?' active':''}" data-chart-period="${k}">${safe(label)}</button>`).join('')}</div></div><article class="card sim-chart-card">${chartSvg(sessions)}</article></section><section class="sim-section"><div class="section-head"><h3>${safe(L().summary)}</h3><span class="muted">${safe(hasCloud()?L().cloudReady:L().localOnly)}</span></div><div class="grid sim-summary-grid"><article class="card stat"><span>${safe(L().completedExams)}</span><strong>${stats.completed}</strong></article><article class="card stat"><span>${safe(L().answeredQuestions)}</span><strong>${stats.answered}</strong></article><article class="card stat"><span>${safe(L().averageScore)}</span><strong>${stats.avg}%</strong></article><article class="card stat"><span>${safe(L().avgPerQuestion)}</span><strong>${formatDuration(stats.avgTime)}</strong></article></div></section><section class="sim-section"><div class="section-head"><h3>${safe(L().history)}</h3><div class="sim-filter-row">${[['all',L().all],['completed',L().completed],['in_progress',L().inProgress]].map(([k,label])=>`<button class="chip${runtime.historyFilter===k?' active':''}" data-history-filter="${k}">${safe(label)}</button>`).join('')}</div></div><div class="sim-history-list">${history.length?history.map(historyItem).join(''):`<article class="card section"><p class="muted">${safe(L().noHistory)}</p></article>`}</div></section></div>`;
+    document.getElementById('newSimBtn').onclick=openNewModal;el.querySelectorAll('[data-continue-sim]').forEach(b=>b.onclick=()=>openSession(b.dataset.continueSim));el.querySelectorAll('[data-result-sim]').forEach(b=>b.onclick=()=>renderResult(b.dataset.resultSim));el.querySelectorAll('[data-history-filter]').forEach(b=>b.onclick=()=>{runtime.historyFilter=b.dataset.historyFilter;renderSimulationHome()});el.querySelectorAll('[data-chart-period]').forEach(b=>b.onclick=()=>{runtime.chartPeriod=b.dataset.chartPeriod;renderSimulationHome()});if(hasCloud()&&runtime.remoteLoadedFor!==state.user.id){const changed=await loadRemoteSessions();if(changed)return renderSimulationHome()}
+  }
+
+  function injectStyles(){if(document.getElementById('simSuiteStyles'))return;const s=document.createElement('style');s.id='simSuiteStyles';s.textContent=`.sim-home{display:grid;gap:26px}.sim-home-header{display:flex;align-items:center;justify-content:space-between;gap:22px}.sim-home-header h2{font-size:34px;margin:6px 0}.sim-home-header p{margin:0;color:var(--muted);max-width:720px;line-height:1.6}.sim-section{display:grid;gap:14px}.sim-filter-row{display:flex;flex-wrap:wrap;gap:7px}.sim-filter-row .chip{cursor:pointer}.sim-filter-row .chip.active{border-color:rgba(76,224,179,.5);background:rgba(76,224,179,.1);color:#e5fff6}.sim-continue-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:13px}.sim-continue-card{padding:18px}.sim-continue-top{display:flex;justify-content:space-between;gap:14px}.sim-continue-top h3{margin:5px 0}.sim-continue-top>strong{font-size:26px;color:var(--accent)}.sim-continue-card p{color:var(--muted);font-size:11px}.sim-progress{height:7px;border-radius:999px;overflow:hidden;background:rgba(255,255,255,.07);margin:11px 0 14px}.sim-progress i{display:block;height:100%;background:linear-gradient(90deg,var(--accent),#6ea8ff)}.sim-summary-grid{grid-template-columns:repeat(4,1fr)}.sim-chart-card{padding:18px;overflow:hidden}.sim-chart{width:100%;height:auto;min-height:220px}.sim-chart text{fill:#7890ab;font-size:11px}.sim-chart-grid{stroke:rgba(255,255,255,.08)}.sim-chart-line{fill:none;stroke-width:3;stroke-linecap:round}.sim-chart-line.score{stroke:#4ce0b3}.sim-chart-line.avg{stroke:#6ea8ff;stroke-dasharray:8 7}.sim-chart-dot{fill:#4ce0b3}.sim-chart-legend{display:flex;justify-content:flex-end;gap:18px;color:var(--muted);font-size:11px}.sim-chart-legend span{display:flex;align-items:center;gap:7px}.sim-chart-legend i{width:24px;height:3px}.sim-chart-legend i.score{background:#4ce0b3}.sim-chart-legend i.avg{background:#6ea8ff}.sim-chart-empty{min-height:220px;display:grid;place-items:center;color:var(--muted)}.sim-history-list{display:grid;gap:10px}.sim-history-item{padding:15px 17px;display:grid;grid-template-columns:110px 1fr auto;gap:18px;align-items:center}.sim-history-date,.sim-history-meta{font-size:11px;color:var(--muted)}.sim-history-title{display:flex;gap:10px;align-items:center}.sim-history-title h3{margin:0}.sim-history-meta{display:flex;flex-wrap:wrap;gap:8px 14px;margin-top:7px}.badge.warning{color:#ffe0a3}.badge.success{color:#b9f6e5}.sim-modal-backdrop{position:fixed;inset:0;z-index:9999;background:rgba(1,7,14,.78);backdrop-filter:blur(8px);display:grid;place-items:center;padding:18px}.sim-modal{width:min(520px,100%);padding:24px}.sim-modal h3{margin:0 0 8px}.sim-modal>p{color:var(--muted);line-height:1.6}.sim-modal-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:20px}.sim-runner-shell{display:grid;gap:14px}.sim-runner-head{padding:13px 15px;display:flex;justify-content:space-between;gap:16px}.sim-runner-head>div:first-child{display:flex;align-items:center;gap:15px}.sim-runner-title{display:grid}.sim-runner-meta{display:flex;gap:16px;color:var(--muted);font-size:11px}.sim-offline-banner{display:none;padding:10px 13px;border-radius:12px;background:rgba(255,201,102,.08);color:#ffe1a6}.sim-offline-banner.show{display:block}.sim-question-layout{display:grid;grid-template-columns:minmax(0,1.08fr) minmax(360px,.92fr);gap:14px}.sim-ecg-panel,.sim-question-panel{padding:17px}.sim-ecg-head,.sim-question-top{display:flex;justify-content:space-between;gap:12px}.sim-ecg-head>div{display:grid}.sim-ecg-head small{color:var(--muted)}.sim-ecg-stage{min-height:350px;display:grid;place-items:center;overflow:hidden;border-radius:14px;background:#fff}.sim-ecg-image{display:block;width:100%;height:auto;max-height:520px;object-fit:contain}.sim-ecg-empty{min-height:350px;display:grid;place-items:center;color:var(--muted)}.sim-question-panel{display:flex;flex-direction:column}.sim-question-panel h2{font-size:21px;line-height:1.35}.sim-flag-btn.active{color:#ffe1a7}.sim-exam-answers .answer.selected{border-color:#6ea8ff;background:rgba(110,168,255,.13)}.sim-autosave{margin-top:12px;color:#8299b2;font-size:10px}.sim-autosave.offline{color:#ffda93}.sim-runner-actions{display:grid;grid-template-columns:auto auto 1fr;gap:8px;margin-top:auto;padding-top:15px}.sim-runner-actions .btn:last-child{justify-self:end}.sim-palette{padding:14px}.sim-palette-grid{display:grid;grid-template-columns:repeat(20,minmax(31px,1fr));gap:5px}.sim-palette-item{min-height:31px;border-radius:8px;border:1px solid var(--line);background:transparent;color:#8fa5bd;cursor:pointer;position:relative}.sim-palette-item.answered{background:rgba(76,224,179,.08);color:#d9fff2}.sim-palette-item.current{border-color:#6ea8ff}.sim-palette-item span{position:absolute;right:2px;top:0;font-size:7px;color:#ffc966}.sim-result-wrap{display:grid;gap:16px}.sim-result-hero{text-align:center;padding:28px}.sim-score-ring{width:190px;height:190px;border-radius:50%;margin:auto;display:flex;flex-direction:column;align-items:center;justify-content:center;border:12px solid rgba(76,224,179,.16)}.sim-score-ring strong{font-size:47px}.sim-score-ring span{font-size:10px;color:var(--muted)}.sim-result-stats{grid-template-columns:repeat(6,1fr)}.sim-result-actions{display:flex;justify-content:center;gap:9px}.sim-review-head{padding:18px;display:flex;justify-content:space-between;align-items:flex-end}.sim-review-list{display:grid;gap:14px;margin-top:14px}.sim-review-card{padding:16px;border-left:3px solid var(--line)}.sim-review-card.correct{border-left-color:#4ce0b3}.sim-review-card.incorrect{border-left-color:#ff6878}.sim-review-card.unanswered{border-left-color:#ffc966}.sim-review-card-head{display:flex;justify-content:space-between}.sim-review-grid{display:grid;grid-template-columns:minmax(280px,.85fr) 1.15fr;gap:17px}.sim-review-ecg{width:100%;background:#fff;border-radius:12px}.sim-answer-summary{display:grid;grid-template-columns:1fr 1fr;gap:9px}.sim-answer-summary>div,.sim-review-explanation{padding:10px;border:1px solid var(--line);border-radius:11px}.sim-review-explanation{margin-top:9px}@media(max-width:1100px){.sim-question-layout,.sim-review-grid{grid-template-columns:1fr}.sim-summary-grid{grid-template-columns:repeat(2,1fr)}.sim-result-stats{grid-template-columns:repeat(3,1fr)}.sim-palette-grid{grid-template-columns:repeat(12,1fr)}}@media(max-width:760px){.sim-home-header,.sim-runner-head,.sim-review-head{flex-direction:column;align-items:stretch}.sim-history-item{grid-template-columns:1fr}.sim-question-layout{grid-template-columns:1fr}.sim-ecg-stage,.sim-ecg-empty{min-height:220px}.sim-runner-actions{grid-template-columns:1fr 1fr}.sim-runner-actions .btn:last-child{grid-column:1/-1;justify-self:stretch}.sim-palette-grid{grid-template-columns:repeat(8,1fr)}.sim-result-stats{grid-template-columns:repeat(2,1fr)}.sim-answer-summary{grid-template-columns:1fr}.sim-modal-actions{flex-direction:column-reverse}}`;document.head.appendChild(s)}
+
+  function onOffline(){const b=document.getElementById('simOfflineBanner');if(b)b.classList.add('show');const s=runtime.activeId&&getLocal(runtime.activeId);if(s)updateSaveStatus(s)}
+  async function onOnline(){const b=document.getElementById('simOfflineBanner');if(b){b.textContent=L().syncBack;b.classList.add('show');setTimeout(()=>b.classList.remove('show'),2800)}await syncAllPending();const s=runtime.activeId&&getLocal(runtime.activeId);if(s)updateSaveStatus(s)}
+  window.addEventListener('offline',onOffline);window.addEventListener('online',onOnline);window.addEventListener('beforeunload',()=>{if(runtime.activeId){const s=getLocal(runtime.activeId);if(s){commitElapsed(s,false);s.updated_at=nowIso();upsertLocal(s)}}});document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden'&&runtime.activeId){const s=getLocal(runtime.activeId);if(s)persistSession(s)}});
+
+  injectStyles();
+  window.renderSims=renderSimulationHome;
+  window.startSim=startNewSimulation;
+  window.renderSimQuestion=function(){const s=runtime.activeId&&getLocal(runtime.activeId);if(s)renderRunner(s);else renderSimulationHome()};
+  window.saveSimResult=function(){};
+  window.ECG_SIM_SUITE={version:STORAGE_VERSION,ecgForQuestion:(q)=>ecgFor(q,{question_snapshots:{}}),readSessions};
+
+  try{if(document.getElementById('simulados'))renderSimulationHome()}catch(e){console.warn('ECG Lab simulation suite:',e)}
+})();

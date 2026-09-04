@@ -47,7 +47,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for f in index.html app.js styles.css release_features.css i18n.js english_content.js english_content_finalize.js localize_data.js bilingual_ui_fixes.js tutor_bilingual_fix.js real_cases.js study_content.js study_casecoach_features.js simulation_features.js supabase/functions/ecg-tutor/index.ts; do
+          for f in index.html app.js styles.css release_features.css i18n.js english_content.js english_content_finalize.js localize_data.js bilingual_ui_fixes.js tutor_bilingual_fix.js real_cases.js study_content.js study_casecoach_features.js simulation_features.js supabase/simulation_suite.sql supabase/functions/ecg-tutor/index.ts; do
             test -f "$f" || { echo "Missing required file: $f"; exit 1; }
           done
 
@@ -78,6 +78,19 @@ jobs:
           grep -q "language:window.ECG_LANG" tutor_bilingual_fix.js
           ! grep -q "const wordMap=" i18n.js
 
+          # Practice exam suite: bilingual labels, local-first persistence, cloud sync, ECG beside question, review and charts.
+          grep -q "Histórico de Simulados" simulation_features.js
+          grep -q "Practice Exam History" simulation_features.js
+          grep -q "Evolução nos Simulados" simulation_features.js
+          grep -q "Practice Exam Progress" simulation_features.js
+          grep -q "localStorage" simulation_features.js
+          grep -q "simulation_answers" simulation_features.js
+          grep -q "sim-ecg-image" simulation_features.js
+          grep -q "caseById" simulation_features.js
+          grep -q "Revisar questões" simulation_features.js
+          grep -q "Review questions" simulation_features.js
+          ! grep -qiE 'pontos fortes|pontos fracos|precisa revisar|strengths|weaknesses|study recommendation' simulation_features.js
+
           node - <<'NODE'
           const fs=require('fs'),vm=require('vm');
           async function validate(lang){
@@ -90,6 +103,13 @@ jobs:
             if(lib.cases.length!==114)throw new Error(`${lang}: expected 114 ECG cases, got ${lib.cases.length}`);
             if(lib.questions.length!==114)throw new Error(`${lang}: expected 114 questions, got ${lib.questions.length}`);
             if(lib.categories.length!==19)throw new Error(`${lang}: expected 19 categories, got ${lib.categories.length}`);
+            const cases=new Map(lib.cases.map(c=>[String(c.id),c]));
+            for(const q of lib.questions){
+              const c=cases.get(String(q.ecg_case_id));
+              if(!c)throw new Error(`${lang}: question ${q.id} has no matching ECG case ${q.ecg_case_id}`);
+              if(!c.image_url)throw new Error(`${lang}: question ${q.id} matching ECG case has no image_url`);
+              if(!(q.options||[]).length)throw new Error(`${lang}: question ${q.id} has no answer options`);
+            }
             if(lang==='en'){
               const study=sandbox.window.ECG_STUDY_CONTENT;
               const lessonCount=Object.keys(study.lessons||{}).length;
@@ -100,7 +120,7 @@ jobs:
               const bad=/[ãõáàâéêíóôúç]|\b(ritmo|onda|paciente|pegadinha|traçado|sinusal|fibrilação|taquicardia|bloqueio|tontura|síncope|medicações|avaliação|exame físico|imagem|laboratório|conducao)\b/i.exec(text);
               if(bad)throw new Error(`Portuguese residue detected in curated English content: ${bad[0]}`);
             }
-            console.log(`${lang}: library validated with 114 questions.`);
+            console.log(`${lang}: library validated with 114 questions and an ECG image for every question.`);
           }
           Promise.all([validate('pt-BR'),validate('en')]).catch(e=>{console.error(e);process.exit(1)});
           NODE

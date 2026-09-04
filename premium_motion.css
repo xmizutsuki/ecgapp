@@ -1,1 +1,202 @@
-/* placeholder */
+/* ECG Lab — premium interaction layer inspired by modern iOS motion principles.
+   Keeps the existing ECG Lab identity/palette and never applies visual effects to ECG morphology. */
+:root{
+  /* Semantic surface aliases for future appearance modes. */
+  --background-primary:var(--bg,#06111e);
+  --background-secondary:var(--bg2,#09182a);
+  --surface:var(--panel,#0d1c2f);
+  --surface-elevated:var(--panel2,#11243a);
+  --text-primary:var(--text,#f4f8ff);
+  --text-secondary:var(--muted,#91a7c4);
+  --accent-primary:var(--accent,#4ce0b3);
+  --accent-secondary:var(--accent2,#6ea8ff);
+  --border-subtle:var(--line,rgba(255,255,255,.08));
+  --success:var(--accent,#4ce0b3);
+  --warning:var(--warn,#ffc966);
+  --error:var(--danger,#ff6f7d);
+
+  /* Global motion tokens. */
+  --motion-instant:90ms;
+  --motion-fast:150ms;
+  --motion-base:220ms;
+  --motion-page:300ms;
+  --ease-standard:cubic-bezier(.2,.8,.2,1);
+  --ease-spring:cubic-bezier(.16,1,.3,1);
+  --ease-out:cubic-bezier(0,.55,.45,1);
+  --press-scale:.975;
+  --glass-bg:rgba(9,24,42,.72);
+  --glass-bg-strong:rgba(9,24,42,.86);
+  --glass-border:rgba(255,255,255,.10);
+  --shadow-low:0 8px 24px rgba(0,0,0,.14);
+  --shadow-mid:0 16px 42px rgba(0,0,0,.20);
+  --shadow-high:0 24px 70px rgba(0,0,0,.28);
+}
+
+html{scroll-behavior:smooth;-webkit-tap-highlight-color:transparent}
+body{overscroll-behavior-y:none}
+button,a,.chip,.answer,.card,.list-item,.module,.sim-card,[role="button"]{-webkit-user-select:none;user-select:none}
+input,textarea,[contenteditable="true"]{-webkit-user-select:text;user-select:text}
+
+/* Reusable primitives: AnimatedButton / PressableCard / GlassPanel / AnimatedModal. */
+.btn,.chip,.answer,.nav button,.mobile-nav button,.list-item,.module,.sim-card,.clinical-case-card,.study-lesson-card,.perf-plan-item,.perf-area,.perf-activity-grid>div,.language-options button,.auth-tabs button,.ft2-fab,.ft2-action{
+  transform:translateZ(0) scale(1);
+  transform-origin:center;
+  transition:transform var(--motion-fast) var(--ease-spring),opacity var(--motion-fast) ease,border-color var(--motion-fast) ease,background-color var(--motion-fast) ease,filter var(--motion-fast) ease,box-shadow var(--motion-fast) ease;
+  will-change:transform;
+}
+.btn:active,.chip:active,.answer:active,.nav button:active,.mobile-nav button:active,.list-item:active,.module:active,.sim-card:active,.clinical-case-card:active,.study-lesson-card:active,.perf-plan-item:active,.perf-area:active,.perf-activity-grid>div:active,.language-options button:active,.auth-tabs button:active,.ft2-fab:active,.ft2-action:active,
+.is-pressing{transform:translateZ(0) scale(var(--press-scale))!important;filter:brightness(.97);box-shadow:var(--shadow-low)!important}
+.btn:disabled,.chip:disabled,.answer:disabled{will-change:auto;transform:none!important}
+
+.card{
+  border-color:var(--glass-border);
+  box-shadow:var(--shadow-mid);
+  transition:transform var(--motion-base) var(--ease-spring),box-shadow var(--motion-base) ease,border-color var(--motion-base) ease,background-color var(--motion-base) ease;
+}
+@media(hover:hover) and (pointer:fine){
+  .card:not(.ecg-card):not(.question):hover{border-color:rgba(255,255,255,.13);box-shadow:0 20px 48px rgba(0,0,0,.22)}
+  .btn:hover,.chip:hover{transform:translateY(-1px) translateZ(0)}
+}
+
+.ui-glass,.sidebar,.mobile-nav,.topbar,.modal,.language-card,.ft2-panel{
+  background-color:var(--glass-bg);
+  border-color:var(--glass-border);
+  -webkit-backdrop-filter:saturate(145%) blur(18px);
+  backdrop-filter:saturate(145%) blur(18px);
+}
+
+/* Sticky dynamic header: retains existing information, gains depth while scrolling. */
+.topbar{
+  position:sticky;top:0;z-index:45;
+  margin:0 -10px 18px;padding:12px 10px;
+  border:1px solid transparent;border-radius:18px;
+  transition:padding var(--motion-base) var(--ease-standard),background-color var(--motion-base) ease,border-color var(--motion-base) ease,box-shadow var(--motion-base) ease;
+}
+body.ui-scrolled .topbar{padding-top:8px;padding-bottom:8px;background:rgba(6,17,30,.78);border-color:rgba(255,255,255,.055);box-shadow:0 10px 28px rgba(0,0,0,.12)}
+.topbar h1{transition:font-size var(--motion-base) var(--ease-spring),transform var(--motion-base) var(--ease-spring)}
+body.ui-scrolled .topbar h1{font-size:23px}
+body.ui-scrolled .topbar p{opacity:.72}
+.topbar p{transition:opacity var(--motion-fast) ease}
+
+/* Navigation depth and active indicator. */
+.sidebar{box-shadow:10px 0 36px rgba(0,0,0,.10)}
+.nav button{position:relative;overflow:hidden}
+.nav button.active{box-shadow:none}
+.nav button.active:before{content:"";position:absolute;left:0;top:22%;bottom:22%;width:3px;border-radius:99px;background:var(--accent-primary);animation:uiNavIndicator var(--motion-base) var(--ease-spring)}
+.nav button b{display:inline-block;transition:transform var(--motion-base) var(--ease-spring),color var(--motion-fast) ease}
+.nav button.active b{transform:scale(1.09);color:var(--accent-primary)}
+@keyframes uiNavIndicator{from{transform:scaleY(.25);opacity:.2}to{transform:none;opacity:1}}
+
+.mobile-nav{
+  background:rgba(7,20,35,.78)!important;
+  border-top:1px solid rgba(255,255,255,.10)!important;
+  -webkit-backdrop-filter:saturate(150%) blur(20px);backdrop-filter:saturate(150%) blur(20px);
+  box-shadow:0 -12px 34px rgba(0,0,0,.20);
+}
+.mobile-nav button{position:relative;border-radius:15px!important}
+.mobile-nav button.active{background:rgba(76,224,179,.075)!important;color:var(--text-primary)!important}
+.mobile-nav button.active:after{content:"";position:absolute;left:34%;right:34%;top:4px;height:3px;border-radius:99px;background:var(--accent-primary);animation:uiTabDot var(--motion-base) var(--ease-spring)}
+.mobile-nav button.active{animation:uiTabSpring var(--motion-base) var(--ease-spring)}
+@keyframes uiTabDot{from{transform:scaleX(.2);opacity:0}to{transform:none;opacity:1}}
+@keyframes uiTabSpring{0%{transform:scale(.96)}65%{transform:scale(1.045)}100%{transform:scale(1)}}
+
+/* PageTransition: no DOM duplication; active page animates with direction set before navigation. */
+.page.active{animation:uiPageForward var(--motion-page) var(--ease-spring) both;transform-origin:center top}
+body[data-motion-dir="back"] .page.active{animation-name:uiPageBack}
+@keyframes uiPageForward{from{opacity:.15;transform:translate3d(18px,0,0) scale(.995)}to{opacity:1;transform:none}}
+@keyframes uiPageBack{from{opacity:.15;transform:translate3d(-16px,0,0) scale(.995)}to{opacity:1;transform:none}}
+
+/* Modal / BottomSheet behavior. */
+.modal-backdrop{animation:uiBackdropIn var(--motion-fast) ease both;background:rgba(1,7,13,.63)!important}
+.modal{animation:uiModalIn var(--motion-page) var(--ease-spring) both;background:rgba(13,29,48,.90)!important;box-shadow:var(--shadow-high)!important}
+@keyframes uiBackdropIn{from{opacity:0}to{opacity:1}}
+@keyframes uiModalIn{from{opacity:0;transform:translate3d(0,18px,0) scale(.97)}to{opacity:1;transform:none}}
+.ui-sheet-handle{display:none}
+
+/* SegmentedControl treatment for existing compact filter groups. */
+.auth-tabs,.perf-periods,.sim-filters,.sim-history-filters,.sim-period-filters,.review-filters,.ft2-segment{
+  position:relative;
+}
+.perf-periods,.sim-filters,.sim-history-filters,.sim-period-filters,.review-filters{
+  padding:4px;border:1px solid rgba(255,255,255,.08);border-radius:15px;background:rgba(2,12,22,.32);gap:4px!important
+}
+.perf-periods .chip,.sim-filters .chip,.sim-history-filters .chip,.sim-period-filters .chip,.review-filters .chip{border-color:transparent;background:transparent;border-radius:11px}
+.perf-periods .chip.active,.sim-filters .chip.active,.sim-history-filters .chip.active,.sim-period-filters .chip.active,.review-filters .chip.active{background:rgba(76,224,179,.10);border-color:rgba(76,224,179,.18);box-shadow:0 5px 14px rgba(0,0,0,.12);animation:uiSegmentSelect var(--motion-base) var(--ease-spring)}
+@keyframes uiSegmentSelect{from{transform:scale(.94);opacity:.65}to{transform:none;opacity:1}}
+
+/* Toggle primitive, also styles native checkboxes used as switches without changing semantics. */
+.ui-switch{position:relative;display:inline-flex;width:46px;height:28px;border-radius:999px;background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.08);padding:2px;transition:background var(--motion-fast),border-color var(--motion-fast)}
+.ui-switch>i{width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:0 3px 10px rgba(0,0,0,.25);transform:translateX(0);transition:transform var(--motion-base) var(--ease-spring)}
+.ui-switch.on{background:rgba(76,224,179,.42);border-color:rgba(76,224,179,.36)}.ui-switch.on>i{transform:translateX(18px)}
+
+/* AnimatedProgress + result feedback. */
+.progress>i,.perf-skill-bar i,.perf-xp-bar i,.sim-progress i,.training-progress i{transform-origin:left center;animation:uiProgressGrow 520ms var(--ease-spring) both}
+@keyframes uiProgressGrow{from{transform:scaleX(.05);opacity:.45}to{transform:scaleX(1);opacity:1}}
+.answer.correct{animation:uiCorrect 330ms var(--ease-spring) both}
+.answer.wrong{animation:uiWrong 260ms var(--ease-standard) both}
+@keyframes uiCorrect{0%{transform:scale(.985)}58%{transform:scale(1.018)}100%{transform:none}}
+@keyframes uiWrong{0%,100%{transform:translateX(0)}38%{transform:translateX(-2px)}70%{transform:translateX(2px)}}
+.feedback.show,.case-answer:not(.hidden),.case-ai-feedback,.sim-result,.cat-result{animation:uiReveal var(--motion-page) var(--ease-spring) both}
+@keyframes uiReveal{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+/* Graphs draw in progressively. */
+.perf-line,.sim-chart-line,.cat-chart-line{stroke-dasharray:1200;stroke-dashoffset:1200;animation:uiDrawLine 650ms var(--ease-out) 80ms forwards}
+.perf-dot,.sim-chart-dot,.cat-chart-dot{opacity:0;animation:uiDotIn 240ms var(--ease-spring) 520ms forwards}
+@keyframes uiDrawLine{to{stroke-dashoffset:0}}
+@keyframes uiDotIn{from{opacity:0;transform:scale(.7);transform-box:fill-box;transform-origin:center}to{opacity:1;transform:scale(1)}}
+
+/* SkeletonCard utility: available to feature layers without forcing loaders where no async wait exists. */
+.ui-skeleton,.skeleton-card{position:relative;overflow:hidden;background:rgba(255,255,255,.045)!important;border-color:rgba(255,255,255,.055)!important;color:transparent!important}
+.ui-skeleton:after,.skeleton-card:after{content:"";position:absolute;inset:0;transform:translateX(-110%);background:linear-gradient(100deg,transparent 15%,rgba(255,255,255,.065) 45%,transparent 75%);animation:uiShimmer 1.25s ease-in-out infinite}
+@keyframes uiShimmer{to{transform:translateX(110%)}}
+
+/* Toasts become compact glass notifications. */
+.toast{background:rgba(12,31,50,.88)!important;border-color:rgba(255,255,255,.11)!important;box-shadow:var(--shadow-mid)!important;-webkit-backdrop-filter:blur(16px) saturate(145%);backdrop-filter:blur(16px) saturate(145%);transform:translate3d(0,14px,0) scale(.97)!important;transition:opacity var(--motion-base) ease,transform var(--motion-base) var(--ease-spring)!important}
+.toast.show{transform:translate3d(0,0,0) scale(1)!important}
+
+/* Inputs/selectors retain ECG Lab identity but become more touch friendly. */
+.field input,.field textarea,.field select,.case-reasoning-input{transition:border-color var(--motion-fast) ease,box-shadow var(--motion-fast) ease,background-color var(--motion-fast) ease}
+.field input:focus,.field textarea:focus,.field select:focus,.case-reasoning-input:focus{box-shadow:0 0 0 3px rgba(76,224,179,.08)}
+.sim-range{height:30px}
+.sim-quick-counts .chip,.training-counts .chip{min-height:42px;display:grid;place-items:center}
+
+/* AI analysis states. */
+.case-ai-status:not(:empty){position:relative;padding-left:18px;animation:uiReveal var(--motion-base) var(--ease-spring)}
+.case-ai-status:not(:empty):before{content:"";position:absolute;left:0;top:.45em;width:8px;height:8px;border:2px solid rgba(110,168,255,.3);border-top-color:var(--accent-secondary);border-radius:50%;animation:uiTinySpin .9s linear infinite}
+.case-ai-feedback~.case-ai-status:before{display:none}
+@keyframes uiTinySpin{to{transform:rotate(360deg)}}
+
+/* ECG fidelity zone: only container/image entrance and transform smoothing; never blur/glow/morphology changes. */
+.ecg-wrap,.sim-ecg-viewer,.sim-ecg-shell,.case-ecg-card{contain:layout paint;isolation:isolate}
+.ecg-wrap img,.sim-ecg-image,.sim-review-ecg img,.case-ecg-image{filter:none!important;text-shadow:none!important;box-shadow:none!important;transition:transform var(--motion-fast) var(--ease-out),opacity var(--motion-fast) ease!important}
+.ecg-wrap img[src],.sim-ecg-image[src],.case-ecg-image[src]{animation:uiEcgEnter 210ms ease both}
+@keyframes uiEcgEnter{from{opacity:.35}to{opacity:1}}
+.ecg-wrap:fullscreen img{animation:none}
+
+/* Generic expansion cue for cards that open details, without layout interpolation. */
+[data-view-result],[data-study-lesson],[data-study-case],[data-continue-sim],[data-open-session]{transform-origin:center;transition:transform var(--motion-fast) var(--ease-spring)}
+
+/* Mobile bottom sheets and touch geometry. */
+@media(max-width:720px){
+  .topbar{margin:-4px -5px 14px;padding:10px 5px;border-radius:0 0 16px 16px}
+  body.ui-scrolled .topbar{padding-top:7px;padding-bottom:7px}
+  .modal-backdrop{place-items:end center!important;padding:0!important}
+  .modal-backdrop .modal{width:100%!important;max-width:none!important;border-radius:26px 26px 0 0!important;padding:30px 18px max(18px,env(safe-area-inset-bottom))!important;border-left:0!important;border-right:0!important;border-bottom:0!important;animation:uiSheetIn 340ms var(--ease-spring) both}
+  .modal-backdrop .modal:before{content:"";position:absolute;top:9px;left:50%;width:42px;height:4px;border-radius:99px;background:rgba(255,255,255,.20);transform:translateX(-50%)}
+  @keyframes uiSheetIn{from{transform:translateY(105%)}to{transform:none}}
+  .mobile-nav{padding-bottom:max(4px,env(safe-area-inset-bottom))!important}
+  .btn,.chip,.answer{min-height:42px}
+  .answer{padding-top:14px;padding-bottom:14px}
+  .toast{left:14px!important;right:14px!important;bottom:calc(82px + env(safe-area-inset-bottom))!important;text-align:center}
+}
+
+/* Reduce Motion is a hard accessibility override. */
+@media(prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  *,*:before,*:after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important;scroll-behavior:auto!important}
+  .page.active{animation:none!important}.pulse-ring{animation:none!important}
+  .ui-skeleton:after,.skeleton-card:after{display:none}
+}
+
+/* Runtime class mirrors OS preference and can be toggled by future settings UI. */
+.reduce-motion *,body.reduce-motion *{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important;scroll-behavior:auto!important}

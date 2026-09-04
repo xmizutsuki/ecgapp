@@ -1,0 +1,83 @@
+name: Validate premium motion UI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  motion-ui:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Validate premium interaction layer
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f premium_motion.css
+          test -f premium_motion_overrides.css
+          test -f premium_motion.js
+          node --check premium_motion.js
+
+          grep -q 'premium_motion.css' index.html
+          grep -q 'premium_motion_overrides.css' index.html
+          grep -q 'premium_motion.js' index.html
+
+          # Centralized design/motion tokens and accessibility.
+          grep -q -- '--motion-fast' premium_motion.css
+          grep -q -- '--ease-spring' premium_motion.css
+          grep -q -- '--background-primary' premium_motion.css
+          grep -q 'prefers-reduced-motion:reduce' premium_motion.css
+          grep -q 'reduce-motion' premium_motion.js
+
+          # Interaction primitives requested by the visual refresh.
+          grep -q 'is-pressing' premium_motion.css
+          grep -q 'uiPageForward' premium_motion.css
+          grep -q 'uiSheetIn' premium_motion.css
+          grep -q 'uiProgressGrow' premium_motion.css
+          grep -q 'uiDrawLine' premium_motion.css
+          grep -q 'ui-skeleton' premium_motion.css
+          grep -q 'ECG_MOTION' premium_motion.js
+          grep -q 'navigator.vibrate' premium_motion.js
+          grep -q 'touchstart' premium_motion.js
+
+          # The new global motion runtime must stay event-driven and lightweight.
+          ! grep -q 'MutationObserver' premium_motion.js
+          ! grep -q 'Storage.prototype' premium_motion.js
+          ! grep -q 'setInterval' premium_motion.js
+
+          # ECG fidelity guard: no blur/glow/filter effects on tracing selectors.
+          grep -q 'filter:none!important' premium_motion.css
+          ! grep -Ei '\.(ecg-wrap|sim-ecg-image|case-ecg-image)[^{]*\{[^}]*filter:[^n]' premium_motion.css
+
+          python - <<'PY'
+          from pathlib import Path
+          from html.parser import HTMLParser
+
+          class P(HTMLParser):
+              def __init__(self): super().__init__(); self.refs=[]
+              def handle_starttag(self, tag, attrs):
+                  d=dict(attrs)
+                  if tag=='script' and d.get('src'): self.refs.append(d['src'])
+                  if tag=='link' and d.get('href'): self.refs.append(d['href'])
+
+          p=P(); p.feed(Path('index.html').read_text(encoding='utf-8'))
+          for ref in ('premium_motion.css','premium_motion_overrides.css','premium_motion.js'):
+              assert ref in p.refs, f'{ref} not loaded by index.html'
+              assert Path(ref).is_file(), f'{ref} missing'
+
+          css=Path('premium_motion.css').read_text(encoding='utf-8')
+          js=Path('premium_motion.js').read_text(encoding='utf-8')
+          assert len(css) < 50000, 'premium CSS unexpectedly large'
+          assert len(js) < 30000, 'premium JS unexpectedly large'
+          assert 'blur(' not in css[css.find('/* ECG fidelity zone'):css.find('/* Generic expansion cue')], 'ECG fidelity section must not blur tracings'
+          print('Premium motion UI validated: event-driven, reduced-motion aware, ECG-safe.')
+          PY

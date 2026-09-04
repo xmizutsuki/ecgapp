@@ -1,0 +1,12 @@
+/* ECG Lab — My Performance hotfix.
+   Prevents progress bars from being visually compressed by global entry animations. */
+#desempenho .perf-skill-bar i,
+#desempenho .perf-xp-bar i{
+  animation:none!important;
+  transform:none!important;
+  transition:none!important;
+  transform-origin:left center!important;
+}
+#desempenho .perf-skill-bar{
+  overflow:hidden!important;
+}

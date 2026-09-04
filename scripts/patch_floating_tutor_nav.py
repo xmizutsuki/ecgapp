@@ -35,3 +35,11 @@ runtime_patch = Path(__file__).with_name('patch_floating_tutor_runtime.py')
 if not runtime_patch.is_file():
     raise SystemExit('Missing patch_floating_tutor_runtime.py')
 exec(compile(runtime_patch.read_text(encoding='utf-8'), str(runtime_patch), 'exec'))
+
+# Enable the AI Tutor and CaseCoach for guest/demo users too. Authentication remains
+# optional: logged-in users send their access token while guests are rate-limited by
+# the Edge Function using a privacy-preserving device/network bucket.
+guest_patch = Path(__file__).with_name('patch_guest_ai_access.py')
+if not guest_patch.is_file():
+    raise SystemExit('Missing patch_guest_ai_access.py')
+exec(compile(guest_patch.read_text(encoding='utf-8'), str(guest_patch), 'exec'))

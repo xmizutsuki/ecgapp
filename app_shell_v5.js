@@ -1,24 +1,22 @@
 /* ECG Lab — app shell v5 runtime.
-   Desktop/tablet uses one document scrollbar at the viewport edge while the sidebar
-   remains sticky. Feedback placement and Study Path transitions are normalized
-   after every shell rebuild. */
+   Uses one browser-owned document scrollbar. Mobile Safari/Chrome frequently fire
+   resize events while their address/tool bars collapse or expand during scrolling;
+   those height-only resizes must never trigger a saved-scroll restore. */
 (function(){
   'use strict';
 
   const MOBILE_QUERY='(max-width:720px)';
   let resizeTimer=null;
+  let lastWidth=Math.round(window.innerWidth||document.documentElement.clientWidth||0);
+  let lastOrientation=(screen.orientation&&screen.orientation.type)||((window.innerWidth||0)>(window.innerHeight||0)?'landscape':'portrait');
 
   const isMobile=()=>window.matchMedia?.(MOBILE_QUERY).matches??window.innerWidth<=720;
   const isEn=()=>window.ECG_LANG==='en';
+  const viewportWidth=()=>Math.round(window.innerWidth||document.documentElement.clientWidth||0);
+  const orientationKey=()=>((screen.orientation&&screen.orientation.type)||((window.innerWidth||0)>(window.innerHeight||0)?'landscape':'portrait'));
 
-  function mainScroller(){
-    // v5 intentionally has no nested desktop scroller. Kept for API compatibility.
-    return null;
-  }
-
-  function scrollContentTop(behavior='auto'){
-    window.scrollTo({top:0,left:0,behavior});
-  }
+  function mainScroller(){return null}
+  function scrollContentTop(behavior='auto'){window.scrollTo({top:0,left:0,behavior})}
 
   function normalizeShell(){
     const shell=document.querySelector('.shell');
@@ -38,7 +36,6 @@
   function placeFeedbackLauncher(){
     const launcher=document.getElementById('betaFeedbackLauncher');
     if(!launcher)return;
-
     const fullLabel=isEn()?'Report a beta issue':'Reportar problema do beta';
     launcher.setAttribute('aria-label',fullLabel);
     launcher.title=fullLabel;
@@ -64,10 +61,7 @@
     launcher.dataset.placement='sidebar-footer';
   }
 
-  function sync(){
-    normalizeShell();
-    placeFeedbackLauncher();
-  }
+  function sync(){normalizeShell();placeFeedbackLauncher()}
 
   const previousShell=typeof window.shell==='function'?window.shell:null;
   if(previousShell){
@@ -85,13 +79,29 @@
   });
 
   window.addEventListener('ecg:pagechange',()=>queueMicrotask(sync));
+
   window.addEventListener('resize',()=>{
     clearTimeout(resizeTimer);
     resizeTimer=setTimeout(()=>{
+      const width=viewportWidth();
+      const orientation=orientationKey();
+      const widthChanged=Math.abs(width-lastWidth)>2;
+      const orientationChanged=orientation!==lastOrientation;
+      lastWidth=width;
+      lastOrientation=orientation;
       sync();
-      const page=window.ECG_NAVIGATION?.currentPage?.();
-      if(page)window.ECG_NAVIGATION?.restore?.(page);
-    },120);
+
+      /* Critical mobile rule: browser chrome changes alter viewport HEIGHT many
+         times during a finger scroll. Never restore scroll for those events.
+         A real width/orientation change is allowed to re-normalize layout, but the
+         browser retains its current Y position naturally. */
+      if(isMobile())return;
+
+      if(widthChanged||orientationChanged){
+        const page=window.ECG_NAVIGATION?.currentPage?.();
+        if(page)window.ECG_NAVIGATION?.restore?.(page);
+      }
+    },140);
   },{passive:true});
 
   document.addEventListener('DOMContentLoaded',sync,{once:true});
@@ -99,8 +109,9 @@
   sync();
 
   window.ECG_SHELL_LAYOUT={
-    version:'5.0.0',
+    version:'5.1.0',
     mode:'window-scroll',
+    mobileResizeRestore:false,
     sync,
     mainScroller,
     scrollContentTop

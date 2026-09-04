@@ -1,0 +1,50 @@
+/* ECG Lab — spacing normalization after removal of redundant helper/status copy. */
+
+#dashboard,
+#treinar,
+#simulados,
+#desempenho,
+#trilha{
+  padding-bottom:clamp(24px,3.5vh,44px);
+}
+
+#dashboard > :last-child,
+#treinar > :last-child,
+#simulados > :last-child,
+#desempenho > :last-child,
+#trilha > :last-child{
+  margin-bottom:0!important;
+}
+
+#dashboard .card:empty,
+#treinar .card:empty,
+#simulados .card:empty,
+#desempenho .card:empty,
+#trilha .card:empty,
+#dashboard .section:empty,
+#treinar .section:empty,
+#simulados .section:empty,
+#desempenho .section:empty,
+#trilha .section:empty{
+  display:none!important;
+}
+
+/* Redundant badges/notes removed by ui_cleanup_marked_v1.js should not leave
+   ghost gaps or divider rows behind. */
+#dashboard .section-head:has(> :only-child:empty),
+#treinar .section-head:has(> :only-child:empty),
+#simulados .section-head:has(> :only-child:empty),
+#desempenho .section-head:has(> :only-child:empty),
+#trilha .section-head:has(> :only-child:empty){
+  display:none!important;
+}
+
+@media (max-width:720px){
+  #dashboard,
+  #treinar,
+  #simulados,
+  #desempenho,
+  #trilha{
+    padding-bottom:calc(92px + env(safe-area-inset-bottom));
+  }
+}

@@ -99,7 +99,10 @@ jobs:
           ! grep -q 'app_shell_v4.css' index.html
           ! grep -q 'app_shell_v4.js' index.html
           grep -q "window-scroll-v5" app_shell_v5.js
-          grep -q "position:sticky" app_shell_v5.css
+          grep -q "position:fixed!important" app_shell_v5.css
+          grep -q "width:calc(100% - 250px)" app_shell_v5.css
+          grep -q "max-width:1450px" app_shell_v5.css
+          grep -q "html::-webkit-scrollbar-button" app_shell_v5.css
           grep -q "overflow-y:auto" app_shell_v5.css
           grep -q '0.9.0-beta.1' config.js
 

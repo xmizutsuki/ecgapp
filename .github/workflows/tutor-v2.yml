@@ -1,0 +1,44 @@
+name: Validate floating Tutor v2
+
+on:
+  pull_request:
+    branches: ["main"]
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tutor-v2:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Validate Tutor v2 runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f floating_tutor_v2.js
+          test -f floating_tutor_v2.css
+          node --check floating_tutor_v2.js
+          grep -q 'floating_tutor_v2.js' index.html
+          grep -q 'floating_tutor_v2.css' index.html
+          ! grep -q '<script src="floating_tutor.js"></script>' index.html
+          ! grep -q '<link rel="stylesheet" href="floating_tutor.css"' index.html
+          ! grep -q 'MutationObserver' floating_tutor_v2.js
+          ! grep -q 'Storage.prototype' floating_tutor_v2.js
+          ! grep -q '__floatingTutorOriginalShow' floating_tutor_v2.js
+          ! grep -q 'tutor-panel-open' floating_tutor_v2.css
+          grep -q 'ft2Fab' floating_tutor_v2.js
+          grep -q 'openPanel' floating_tutor_v2.js
+          grep -q 'closePanel' floating_tutor_v2.js
+          grep -q 'answerSubmitted' floating_tutor_v2.js
+          grep -q 'SpeechRecognition' floating_tutor_v2.js
+          grep -q 'ecgLabPracticeTutorMode:v2' floating_tutor_v2.js
+          grep -q 'Tutor available after you finish this practice exam' floating_tutor_v2.js
+          grep -q 'Tutor disponível após finalizar o simulado' floating_tutor_v2.js
+          echo 'Floating Tutor v2 passed stability checks.'

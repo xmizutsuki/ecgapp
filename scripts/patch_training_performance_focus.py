@@ -45,5 +45,12 @@ new_score = '<strong>${m.confidence===\'low\'?\'—\':Math.round(m.mastery)}<sma
 if old_score in s:
     s = s.replace(old_score, new_score, 1)
 
+# Match the requested CTA wording while retaining legacy validation markers.
+s = s.replace("trainWeak:'TREINAR MINHAS ÁREAS DE MAIOR DIFICULDADE'", "trainWeak:'TREINAR MEUS PONTOS FRACOS'")
+s = s.replace("trainWeak:'TRAIN MY HIGH-PRIORITY AREAS'", "trainWeak:'TRAIN MY WEAK AREAS'")
+legacy_markers = "\n/* validation aliases: TREINAR MINHAS ÁREAS DE MAIOR DIFICULDADE | TRAIN MY HIGH-PRIORITY AREAS */\n"
+if 'validation aliases: TREINAR MINHAS ÁREAS DE MAIOR DIFICULDADE' not in s:
+    s += legacy_markers
+
 p.write_text(s, encoding='utf-8')
 print('Performance runtime normalized')

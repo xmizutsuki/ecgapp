@@ -1,0 +1,188 @@
+/* ECG Lab — dashboard viewport fit
+   Keep the initial Dashboard inside one desktop viewport whenever the viewport
+   has enough usable height. Content-heavy pages keep their natural scrolling.
+   Mobile/small-height screens remain scrollable so nothing is clipped. */
+
+@media (min-width:1024px) and (min-height:700px){
+  body.ui-foundation-v3:has(#dashboard.page.active){
+    overflow-y:hidden;
+  }
+
+  body.ui-foundation-v3:has(#dashboard.page.active) .main{
+    height:100dvh;
+    min-height:0;
+    padding-top:14px!important;
+    padding-bottom:14px!important;
+    overflow:hidden;
+  }
+
+  body.ui-foundation-v3:has(#dashboard.page.active) .topbar{
+    margin-bottom:10px!important;
+    min-height:52px;
+  }
+
+  body.ui-foundation-v3 #dashboard.page.active{
+    display:grid!important;
+    grid-template-rows:minmax(190px,29vh) auto minmax(0,1fr);
+    gap:10px;
+    height:calc(100dvh - 96px);
+    min-height:0;
+    overflow:hidden;
+  }
+
+  body.ui-foundation-v3 #dashboard .hero{
+    min-height:0!important;
+    height:100%;
+    padding:clamp(16px,1.6vw,24px)!important;
+    gap:14px!important;
+  }
+  body.ui-foundation-v3 #dashboard .hero h2{
+    font-size:clamp(1.9rem,2.45vw,2.35rem)!important;
+    margin:9px 0 7px!important;
+  }
+  body.ui-foundation-v3 #dashboard .hero p{
+    font-size:.91rem!important;
+    line-height:1.48!important;
+    margin:0!important;
+    max-width:760px;
+  }
+  body.ui-foundation-v3 #dashboard .hero .cta{
+    margin-top:12px!important;
+    gap:8px!important;
+  }
+  body.ui-foundation-v3 #dashboard .hero .btn{
+    min-height:40px!important;
+    padding:8px 14px!important;
+    font-size:.84rem!important;
+  }
+  body.ui-foundation-v3 #dashboard .pulse-ring{
+    width:clamp(118px,12vw,154px)!important;
+    height:clamp(118px,12vw,154px)!important;
+    font-size:46px!important;
+    box-shadow:0 0 0 20px rgba(76,224,179,.03),0 0 0 40px rgba(110,168,255,.02)!important;
+  }
+
+  body.ui-foundation-v3 #dashboard .stats{
+    margin-top:0!important;
+    gap:10px!important;
+  }
+  body.ui-foundation-v3 #dashboard .stat{
+    padding:11px 14px!important;
+    min-height:0!important;
+  }
+  body.ui-foundation-v3 #dashboard .stat .label{
+    font-size:.72rem!important;
+  }
+  body.ui-foundation-v3 #dashboard .stat strong{
+    font-size:clamp(1.55rem,2vw,2rem)!important;
+    margin:4px 0 1px!important;
+    line-height:1.05!important;
+  }
+  body.ui-foundation-v3 #dashboard .stat small{
+    font-size:.72rem!important;
+    line-height:1.25!important;
+  }
+
+  body.ui-foundation-v3 #dashboard .two{
+    margin-top:0!important;
+    gap:10px!important;
+    min-height:0;
+    overflow:hidden;
+  }
+  body.ui-foundation-v3 #dashboard .two>.card{
+    min-height:0;
+    height:100%;
+    overflow:hidden;
+  }
+  body.ui-foundation-v3 #dashboard .section{
+    padding:12px 14px!important;
+  }
+  body.ui-foundation-v3 #dashboard .section-head{
+    margin-bottom:7px!important;
+  }
+  body.ui-foundation-v3 #dashboard .section-head h3{
+    font-size:1.08rem!important;
+  }
+  body.ui-foundation-v3 #dashboard .list{
+    gap:6px!important;
+  }
+  body.ui-foundation-v3 #dashboard .list-item{
+    padding:7px 9px!important;
+    gap:9px!important;
+  }
+  body.ui-foundation-v3 #dashboard .list-num{
+    width:34px!important;
+    height:34px!important;
+    border-radius:10px!important;
+    font-size:.82rem!important;
+  }
+  body.ui-foundation-v3 #dashboard .list-item h4{
+    font-size:.86rem!important;
+    margin:0 0 1px!important;
+    line-height:1.18!important;
+  }
+  body.ui-foundation-v3 #dashboard .list-item p{
+    font-size:.69rem!important;
+    line-height:1.22!important;
+  }
+  body.ui-foundation-v3 #dashboard .list-item .badge{
+    font-size:.64rem!important;
+    padding:4px 7px!important;
+  }
+  body.ui-foundation-v3 #dashboard .skill{
+    grid-template-columns:minmax(92px,118px) 1fr 38px!important;
+    gap:8px!important;
+    margin:6px 0!important;
+    font-size:.76rem!important;
+    line-height:1.2!important;
+  }
+  body.ui-foundation-v3 #dashboard .progress{
+    height:7px!important;
+  }
+}
+
+/* Notebook screens need a little more compression than 1080p desktops. */
+@media (min-width:1024px) and (max-height:820px) and (min-height:700px){
+  body.ui-foundation-v3 #dashboard.page.active{
+    grid-template-rows:minmax(170px,25vh) auto minmax(0,1fr);
+    height:calc(100dvh - 90px);
+    gap:8px;
+  }
+  body.ui-foundation-v3:has(#dashboard.page.active) .topbar{
+    margin-bottom:7px!important;
+  }
+  body.ui-foundation-v3 #dashboard .hero{
+    padding:14px 18px!important;
+  }
+  body.ui-foundation-v3 #dashboard .hero h2{
+    font-size:1.85rem!important;
+  }
+  body.ui-foundation-v3 #dashboard .hero p{
+    font-size:.84rem!important;
+    line-height:1.38!important;
+  }
+  body.ui-foundation-v3 #dashboard .hero .cta{
+    margin-top:8px!important;
+  }
+  body.ui-foundation-v3 #dashboard .stat{
+    padding:9px 12px!important;
+  }
+  body.ui-foundation-v3 #dashboard .section{
+    padding:10px 12px!important;
+  }
+  body.ui-foundation-v3 #dashboard .list-item{
+    padding:6px 8px!important;
+  }
+  body.ui-foundation-v3 #dashboard .skill{
+    margin:5px 0!important;
+  }
+}
+
+/* Portrait tablets and phones keep normal document scrolling: fitting every
+   Dashboard card into one viewport there would make text/touch targets too small. */
+@media (max-width:1023px), (max-height:699px){
+  body.ui-foundation-v3 #dashboard.page.active{
+    height:auto;
+    overflow:visible;
+  }
+}

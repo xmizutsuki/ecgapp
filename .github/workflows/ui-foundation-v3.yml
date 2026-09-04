@@ -1,0 +1,53 @@
+name: Validate UI Foundation v3
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-ui-foundation:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate responsive foundation
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f ui_foundation_v3.css
+          test -f ui_foundation_v3.js
+          node --check ui_foundation_v3.js
+
+          grep -q 'viewport-fit=cover' index.html
+          grep -q 'ui_foundation_v3.css' index.html
+          grep -q 'ui_foundation_v3.js' index.html
+          ! grep -q 'fonts.googleapis.com' index.html
+
+          grep -q -- '--font-display:-apple-system' ui_foundation_v3.css
+          grep -q -- '--content-max:1440px' ui_foundation_v3.css
+          grep -q '100dvh' ui_foundation_v3.css
+          grep -q 'safe-area-inset-bottom' ui_foundation_v3.css
+          grep -q '@media(max-width:767px)' ui_foundation_v3.css
+          grep -q '@media(max-width:479px)' ui_foundation_v3.css
+          grep -q '@media(max-width:1023px)' ui_foundation_v3.css
+          grep -q '@media(max-width:1279px)' ui_foundation_v3.css
+          grep -q '@media(min-width:1600px)' ui_foundation_v3.css
+          grep -q 'grid-template-columns:repeat(5,minmax(0,1fr))' ui_foundation_v3.css
+          grep -q '#treinar input\[type="range"\]' ui_foundation_v3.css
+          grep -q '.perf-skill-row' ui_foundation_v3.css
+          grep -q 'animation:none!important' ui_foundation_v3.css
+          grep -q '@media(prefers-reduced-motion:reduce)' ui_foundation_v3.css
+          grep -q 'filter:none!important' ui_foundation_v3.css
+
+          ! grep -q 'MutationObserver' ui_foundation_v3.js
+          ! grep -q 'Storage.prototype' ui_foundation_v3.js
+          ! grep -q 'showPage=' ui_foundation_v3.js
+
+          echo 'UI Foundation v3 validated.'

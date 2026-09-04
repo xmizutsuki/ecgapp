@@ -1,6 +1,7 @@
 from pathlib import Path
 
-p = Path(__file__).resolve().parents[1] / 'app.js'
+root = Path(__file__).resolve().parents[1]
+p = root / 'app.js'
 s = p.read_text(encoding='utf-8')
 changed = False
 
@@ -23,3 +24,11 @@ if "navButton('tutor','✦','Tutor IA')" in s or "mobileNav('tutor','✦','Tutor
 
 p.write_text(s, encoding='utf-8')
 print('Floating Tutor navigation patch applied' if changed else 'Floating Tutor navigation already patched')
+
+# Apply the runtime stabilization after the navigation patch. Keeping this invoked
+# from the existing build step ensures GitHub Pages always receives the fixed Tutor
+# even while the source remains readable as the original feature implementation.
+runtime_patch = Path(__file__).with_name('patch_floating_tutor_runtime.py')
+if not runtime_patch.is_file():
+    raise SystemExit('Missing patch_floating_tutor_runtime.py')
+exec(compile(runtime_patch.read_text(encoding='utf-8'), str(runtime_patch), 'exec'))

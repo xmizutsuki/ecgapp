@@ -12,25 +12,25 @@
     overflow-x:hidden!important;
     overflow-y:auto!important;
     scrollbar-width:thin;
-    scrollbar-color:rgba(76,224,179,.42) transparent;
+    scrollbar-color:rgba(13,28,47,.72) transparent;
   }
 
-  /* Thin, low-contrast scrollbar inspired by macOS/iOS overlay scrollbars.
-     It uses the app's mint/blue palette without becoming a visual divider. */
+  /* Near-invisible scrollbar: the thumb uses the same deep navy family as the
+     page, so it remains usable without reading as a separate UI element. */
   html::-webkit-scrollbar,
   body::-webkit-scrollbar{width:6px;height:6px}
   html::-webkit-scrollbar-track,
   body::-webkit-scrollbar-track{background:transparent}
   html::-webkit-scrollbar-thumb,
   body::-webkit-scrollbar-thumb{
-    background:linear-gradient(180deg,rgba(76,224,179,.44),rgba(110,168,255,.38));
+    background:rgba(13,28,47,.76);
     border-radius:999px;
-    border:1px solid rgba(6,17,30,.24);
+    border:1px solid rgba(6,17,30,.34);
     background-clip:padding-box;
   }
   html::-webkit-scrollbar-thumb:hover,
   body::-webkit-scrollbar-thumb:hover{
-    background:linear-gradient(180deg,rgba(76,224,179,.66),rgba(110,168,255,.56));
+    background:rgba(17,36,58,.9);
     background-clip:padding-box;
   }
 

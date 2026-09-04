@@ -48,7 +48,6 @@
   }
   function canonicalEvents(){
     const p=perf();if(!p?.readEvents)return [];
-    p.backfillSources?.();
     const map=new Map();
     for(const e of p.readEvents()||[]){if(e?.id)map.set(String(e.id),e)}
     return [...map.values()].filter(eligibleEvent);
@@ -98,6 +97,7 @@
 
   function renderCanonicalDashboard(){
     const el=document.getElementById('dashboard');if(!el)return;
+    perf()?.backfillSources?.();
     const s=canonicalSummary();
     const rec=s.recommendations.length?s.recommendations.map(recommendationHtml).join(''):`<p class="muted">${safe(L().noData)}</p>`;
     const skills=s.skillMap.length?s.skillMap.map(skillHtml).join(''):`<p class="muted">${safe(L().notEnough)}</p>`;
@@ -150,11 +150,12 @@
 
   function install(){
     if(!perf())return setTimeout(install,40);
+    perf()?.backfillSources?.();
     window.ECG_METRICS={version:VERSION,summary:canonicalSummary,renderDashboard:renderCanonicalDashboard,patchPerformance:patchPerformancePage,sync:()=>syncCanonical(canonicalSummary())};
     window.renderDashboard=renderCanonicalDashboard;
     window.loadUserStats=async()=>{const s=canonicalSummary();const a=document.getElementById('statAccuracy'),x=document.getElementById('statXP'),c=document.getElementById('statCases');if(a)a.textContent=fmtPct(s.accuracy);if(x)x.textContent=s.xp.toLocaleString(isEn()?'en-US':'pt-BR');if(c)c.textContent=String(s.uniqueEcgs);scheduleCloudSync(s)};
     const originalUpdate=window.updateProgress;
-    if(typeof originalUpdate==='function'&&!originalUpdate.__canonicalWrapped){const wrapped=async function(correct){const r=await originalUpdate(correct);setTimeout(()=>{if(appState()?.page==='dashboard')renderCanonicalDashboard();if(appState()?.page==='desempenho')patchPerformancePage();else scheduleCloudSync(canonicalSummary())},120);return r};wrapped.__canonicalWrapped=true;window.updateProgress=wrapped}
+    if(typeof originalUpdate==='function'&&!originalUpdate.__canonicalWrapped){const wrapped=async function(correct){const r=await originalUpdate(correct);perf()?.backfillSources?.();setTimeout(()=>{if(appState()?.page==='dashboard')renderCanonicalDashboard();if(appState()?.page==='desempenho')patchPerformancePage();else scheduleCloudSync(canonicalSummary())},120);return r};wrapped.__canonicalWrapped=true;window.updateProgress=wrapped}
     if(observer)observer.disconnect();observer=new MutationObserver(()=>{if(appState()?.page==='desempenho')setTimeout(patchPerformancePage,0)});observer.observe(document.documentElement,{subtree:true,childList:true});
     setTimeout(()=>{if(document.getElementById('dashboard'))renderCanonicalDashboard();if(appState()?.page==='desempenho')patchPerformancePage();else scheduleCloudSync(canonicalSummary())},80);
     window.addEventListener('storage',()=>setTimeout(()=>{if(appState()?.page==='dashboard')renderCanonicalDashboard();if(appState()?.page==='desempenho')patchPerformancePage()},80));

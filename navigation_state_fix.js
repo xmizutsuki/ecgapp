@@ -159,11 +159,6 @@
         renderedUserKey=nextUserKey;
         applyPage(targetPage);
 
-        /* On phones, browser chrome changes viewport height while the finger is
-           scrolling. A same-page auth/shell refresh must never schedule a stale
-           requestAnimationFrame scroll restoration, because that is perceived as
-           the page snapping back toward the top. Let the native viewport keep its
-           current position instead. Desktop retains per-tab restoration. */
         if(!isMobile()){
           restore(targetPage);
         }else if(targetPage!==beforePage&&!touchActive){
@@ -180,7 +175,8 @@
   try{if('scrollRestoration'in history)history.scrollRestoration='manual'}catch{}
 
   window.ECG_NAVIGATION={
-    version:'6.0.0',
+    version:'5.0.0',
+    revision:'6.0.0-mobile-scroll',
     navigate,
     currentPage,
     remember,

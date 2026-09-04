@@ -5,20 +5,22 @@
   'use strict';
 
   const CFG=window.ECG_CONFIG||{};
-  const VERSION=CFG.APP_VERSION||'0.9.0-beta.1';
+  const VERSION=CFG.APP_VERSION||'1.0.0-beta.1';
   const ERROR_KEY='ecgLabBetaErrors:v1';
   const FEEDBACK_KEY='ecgLabBetaFeedbackQueue:v1';
   const MAX_ERRORS=20;
   const MAX_FEEDBACK=20;
+  const LOGIN_PASSWORD_MIN=6;
+  const NEW_PASSWORD_MIN=8;
   const en=()=>window.ECG_LANG==='en';
   const T=()=>en()?{
     report:'Beta · Report issue',version:`Version ${VERSION}`,title:'Report a beta issue',category:'Category',description:'What happened?',placeholder:'Describe what you were doing, what you expected, and what happened.',send:'Send report',cancel:'Cancel',sent:'Thanks — your report was sent.',saved:'Report saved on this device and will be retried when you are online.',required:'Please describe the issue before sending.',
     catBug:'Bug',catVisual:'Visual / layout',catPerf:'Performance',catContent:'Content / translation',catOther:'Other',
-    forgot:'Forgot password?',resetTitle:'Reset password',resetHelp:'Enter your account email and we will send a recovery link.',resetSend:'Send recovery email',resetSent:'If an account exists for this email, a recovery link has been sent.',newPassword:'Set a new password',newPasswordHelp:'Choose a password with at least 6 characters.',password:'New password',confirm:'Confirm password',savePassword:'Save new password',passwordSaved:'Password updated. You can continue using ECG Lab.',passwordMismatch:'The passwords do not match.',passwordShort:'Use at least 6 characters.',emailNeeded:'Enter a valid email address.',authWait:'Please wait…',authUnavailable:'Sign-in is temporarily unavailable. Try again in a moment.',badLogin:'Incorrect email or password.',emailConfirm:'Confirm your email before signing in.',alreadyRegistered:'An account already exists for this email.',network:'Could not connect. Check your internet connection and try again.',generic:'Something went wrong. Please try again.'
+    forgot:'Forgot password?',resetTitle:'Reset password',resetHelp:'Enter your account email and we will send a recovery link.',resetSend:'Send recovery email',resetSent:'If an account exists for this email, a recovery link has been sent.',newPassword:'Set a new password',newPasswordHelp:'Choose a password with at least 8 characters.',password:'New password',confirm:'Confirm password',savePassword:'Save new password',passwordSaved:'Password updated. You can continue using ECG Lab.',passwordMismatch:'The passwords do not match.',passwordShortNew:'Use at least 8 characters for a new password.',passwordShortLogin:'Password must contain at least 6 characters.',emailNeeded:'Enter a valid email address.',authWait:'Please wait…',authUnavailable:'Sign-in is temporarily unavailable. Try again in a moment.',badLogin:'Incorrect email or password.',emailConfirm:'Confirm your email before signing in.',alreadyRegistered:'An account already exists for this email.',network:'Could not connect. Check your internet connection and try again.',generic:'Something went wrong. Please try again.'
   }:{
     report:'Beta · Reportar problema',version:`Versão ${VERSION}`,title:'Reportar problema do beta',category:'Categoria',description:'O que aconteceu?',placeholder:'Descreva o que estava fazendo, o que esperava e o que aconteceu.',send:'Enviar relato',cancel:'Cancelar',sent:'Obrigado — seu relato foi enviado.',saved:'Relato salvo neste dispositivo e será reenviado quando houver conexão.',required:'Descreva o problema antes de enviar.',
     catBug:'Bug',catVisual:'Visual / layout',catPerf:'Desempenho',catContent:'Conteúdo / tradução',catOther:'Outro',
-    forgot:'Esqueci minha senha',resetTitle:'Redefinir senha',resetHelp:'Informe o e-mail da sua conta e enviaremos um link de recuperação.',resetSend:'Enviar e-mail de recuperação',resetSent:'Se existir uma conta para este e-mail, um link de recuperação foi enviado.',newPassword:'Definir nova senha',newPasswordHelp:'Escolha uma senha com pelo menos 6 caracteres.',password:'Nova senha',confirm:'Confirmar senha',savePassword:'Salvar nova senha',passwordSaved:'Senha atualizada. Você pode continuar usando o ECG Lab.',passwordMismatch:'As senhas não coincidem.',passwordShort:'Use pelo menos 6 caracteres.',emailNeeded:'Informe um e-mail válido.',authWait:'Aguarde…',authUnavailable:'O login está temporariamente indisponível. Tente novamente em instantes.',badLogin:'E-mail ou senha incorretos.',emailConfirm:'Confirme seu e-mail antes de entrar.',alreadyRegistered:'Já existe uma conta com este e-mail.',network:'Não foi possível conectar. Verifique sua internet e tente novamente.',generic:'Não foi possível concluir a operação. Tente novamente.'
+    forgot:'Esqueci minha senha',resetTitle:'Redefinir senha',resetHelp:'Informe o e-mail da sua conta e enviaremos um link de recuperação.',resetSend:'Enviar e-mail de recuperação',resetSent:'Se existir uma conta para este e-mail, um link de recuperação foi enviado.',newPassword:'Definir nova senha',newPasswordHelp:'Escolha uma senha com pelo menos 8 caracteres.',password:'Nova senha',confirm:'Confirmar senha',savePassword:'Salvar nova senha',passwordSaved:'Senha atualizada. Você pode continuar usando o ECG Lab.',passwordMismatch:'As senhas não coincidem.',passwordShortNew:'Use pelo menos 8 caracteres para uma nova senha.',passwordShortLogin:'A senha deve ter pelo menos 6 caracteres.',emailNeeded:'Informe um e-mail válido.',authWait:'Aguarde…',authUnavailable:'O login está temporariamente indisponível. Tente novamente em instantes.',badLogin:'E-mail ou senha incorretos.',emailConfirm:'Confirme seu e-mail antes de entrar.',alreadyRegistered:'Já existe uma conta com este e-mail.',network:'Não foi possível conectar. Verifique sua internet e tente novamente.',generic:'Não foi possível concluir a operação. Tente novamente.'
   };
 
   const toastSafe=msg=>{try{if(typeof window.toast==='function')window.toast(msg)}catch{}}
@@ -85,16 +87,22 @@
     if(/invalid login credentials|invalid.*password/.test(s))return t.badLogin;
     if(/email not confirmed|confirm.*email/.test(s))return t.emailConfirm;
     if(/already registered|already been registered|user already/.test(s))return t.alreadyRegistered;
+    if(/password.*(short|least|length)|weak password/.test(s))return t.passwordShortNew;
     if(/fetch|network|connection|failed to fetch/.test(s))return t.network;
     return t.generic;
   }
 
-  function ensureForgotButton(){
-    const form=document.getElementById('authForm');if(!form||document.getElementById('forgotPasswordBtn'))return;
-    const b=document.createElement('button');b.type='button';b.id='forgotPasswordBtn';b.className='auth-forgot';b.textContent=T().forgot;b.onclick=openResetRequest;form.insertAdjacentElement('afterend',b);updateForgotVisibility();
-    document.querySelectorAll('[data-auth-tab]').forEach(tab=>tab.addEventListener('click',()=>setTimeout(updateForgotVisibility,0)));
+  function authModeValue(){return typeof authMode!=='undefined'?authMode:'login'}
+  function syncAuthPasswordConstraint(){
+    const input=document.getElementById('authPassword');if(!input)return;
+    input.minLength=authModeValue()==='signup'?NEW_PASSWORD_MIN:LOGIN_PASSWORD_MIN;
   }
-  function updateForgotVisibility(){const b=document.getElementById('forgotPasswordBtn');if(b)b.hidden=(typeof authMode!=='undefined'&&authMode!=='login')}
+  function ensureForgotButton(){
+    const form=document.getElementById('authForm');if(!form||document.getElementById('forgotPasswordBtn')){syncAuthPasswordConstraint();return}
+    const b=document.createElement('button');b.type='button';b.id='forgotPasswordBtn';b.className='auth-forgot';b.textContent=T().forgot;b.onclick=openResetRequest;form.insertAdjacentElement('afterend',b);updateForgotVisibility();syncAuthPasswordConstraint();
+    document.querySelectorAll('[data-auth-tab]').forEach(tab=>tab.addEventListener('click',()=>setTimeout(()=>{updateForgotVisibility();syncAuthPasswordConstraint()},0)));
+  }
+  function updateForgotVisibility(){const b=document.getElementById('forgotPasswordBtn');if(b)b.hidden=authModeValue()!=='login'}
   function validEmail(v){return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)}
 
   function openResetRequest(){
@@ -105,16 +113,19 @@
 
   function openNewPassword(){
     if(document.getElementById('betaNewPasswordModal'))return;const t=T(),form=document.createElement('form');form.className='beta-feedback-form';
-    form.innerHTML=`<p>${t.newPasswordHelp}</p><label><span>${t.password}</span><input id="betaNewPassword" type="password" minlength="6" autocomplete="new-password" required></label><label><span>${t.confirm}</span><input id="betaConfirmPassword" type="password" minlength="6" autocomplete="new-password" required></label><div class="beta-modal-actions"><button type="submit" class="btn btn-primary">${t.savePassword}</button></div>`;
-    const modal=modalBase('betaNewPasswordModal',t.newPassword,form);form.onsubmit=async e=>{e.preventDefault();const p=form.querySelector('#betaNewPassword').value,c=form.querySelector('#betaConfirmPassword').value;if(p.length<6){toastSafe(t.passwordShort);return}if(p!==c){toastSafe(t.passwordMismatch);return}const btn=form.querySelector('[type="submit"]');btn.disabled=true;try{const {error}=await sb.auth.updateUser({password:p});if(error)throw error;modal.remove();toastSafe(t.passwordSaved)}catch(err){toastSafe(friendlyAuthError(err));recordError('password_update',err)}finally{btn.disabled=false}};
+    form.innerHTML=`<p>${t.newPasswordHelp}</p><label><span>${t.password}</span><input id="betaNewPassword" type="password" minlength="${NEW_PASSWORD_MIN}" autocomplete="new-password" required></label><label><span>${t.confirm}</span><input id="betaConfirmPassword" type="password" minlength="${NEW_PASSWORD_MIN}" autocomplete="new-password" required></label><div class="beta-modal-actions"><button type="submit" class="btn btn-primary">${t.savePassword}</button></div>`;
+    const modal=modalBase('betaNewPasswordModal',t.newPassword,form);form.onsubmit=async e=>{e.preventDefault();const p=form.querySelector('#betaNewPassword').value,c=form.querySelector('#betaConfirmPassword').value;if(p.length<NEW_PASSWORD_MIN){toastSafe(t.passwordShortNew);return}if(p!==c){toastSafe(t.passwordMismatch);return}const btn=form.querySelector('[type="submit"]');btn.disabled=true;try{const {error}=await sb.auth.updateUser({password:p});if(error)throw error;modal.remove();toastSafe(t.passwordSaved)}catch(err){toastSafe(friendlyAuthError(err));recordError('password_update',err)}finally{btn.disabled=false}};
   }
 
   function installAuthGuard(){
-    ensureForgotButton();const form=document.getElementById('authForm');if(!form||form.dataset.betaGuard==='1')return;form.dataset.betaGuard='1';
+    ensureForgotButton();syncAuthPasswordConstraint();const form=document.getElementById('authForm');if(!form||form.dataset.betaGuard==='1')return;form.dataset.betaGuard='1';
     form.addEventListener('submit',async e=>{
       e.preventDefault();e.stopImmediatePropagation();const t=T();
       if(typeof sb==='undefined'||!sb){toastSafe(t.authUnavailable);return}
-      const email=document.getElementById('authEmail').value.trim(),password=document.getElementById('authPassword').value,mode=typeof authMode!=='undefined'?authMode:'login';if(!validEmail(email)){toastSafe(t.emailNeeded);return}if(password.length<6){toastSafe(t.passwordShort);return}
+      const email=document.getElementById('authEmail').value.trim(),password=document.getElementById('authPassword').value,mode=authModeValue();
+      if(!validEmail(email)){toastSafe(t.emailNeeded);return}
+      const min=mode==='signup'?NEW_PASSWORD_MIN:LOGIN_PASSWORD_MIN;
+      if(password.length<min){toastSafe(mode==='signup'?t.passwordShortNew:t.passwordShortLogin);return}
       const button=document.getElementById('authSubmit'),old=button.textContent;button.disabled=true;button.textContent=t.authWait;
       try{
         if(mode==='signup'){

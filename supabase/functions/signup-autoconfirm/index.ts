@@ -71,7 +71,8 @@ serve(async (req) => {
 
     return json({ ok: true }, 200, cors);
   } catch (e) {
-    console.error("signup-autoconfirm unexpected error", e?.message || String(e));
+    const message = e instanceof Error ? e.message : String(e);
+    console.error("signup-autoconfirm unexpected error", message);
     return json({ error: "Não foi possível criar a conta agora. Tente novamente." }, 500, cors);
   }
 });
@@ -138,7 +139,7 @@ async function sha256(value: string) {
   return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-function json(body: unknown, status = 200, cors: Record<string, string>, extra: Record<string, string> = {}) {
+function json(body: unknown, status: number, cors: Record<string, string>, extra: Record<string, string> = {}) {
   return new Response(JSON.stringify(body), {
     status,
     headers: { ...cors, ...extra, "Content-Type": "application/json", "Cache-Control": "no-store" },

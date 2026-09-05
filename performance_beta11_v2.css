@@ -1,0 +1,77 @@
+/* ECG Lab — Beta 1.1 performance pass.
+   Reduces expensive compositor effects on mobile/coarse-pointer devices while
+   preserving ECG tracing fidelity and the desktop visual design. */
+
+@media (max-width: 900px), (pointer: coarse) {
+  html {
+    scroll-behavior: auto !important;
+  }
+
+  body.ui-v2 {
+    background-attachment: scroll !important;
+  }
+
+  body.ui-v2 .sidebar,
+  body.ui-v2 .topbar,
+  body.ui-v2 .mobile-nav,
+  body.ui-v2 .modal-backdrop,
+  body.ui-v2 .sim-modal-backdrop,
+  body.ui-v2 .cat-modal-backdrop,
+  body.ui-v2 .toast,
+  body.ui-v2 .ft2-panel,
+  .sidebar,
+  .modal-backdrop,
+  .float-tag,
+  .case-zoom-toolbar {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+
+  body.ui-v2 .card {
+    box-shadow: 0 8px 24px rgba(0,0,0,.16) !important;
+  }
+
+  body.ui-v2 .mobile-nav {
+    box-shadow: 0 10px 28px rgba(0,0,0,.26) !important;
+  }
+
+  body.ui-v2 .btn,
+  body.ui-v2 .chip,
+  body.ui-v2 .answer,
+  body.ui-v2 .nav button,
+  body.ui-v2 .mobile-nav button,
+  body.ui-v2 .language-options button,
+  body.ui-v2 .auth-tabs button,
+  body.ui-v2 .ft2-fab,
+  body.ui-v2 .ft2-head nav button {
+    transition-duration: 90ms !important;
+  }
+
+  body.ui-v2 .progress > i,
+  body.ui-v2 .cat-progress i,
+  body.ui-v2 .sim-progress i,
+  body.ui-v2 .sim-progress-bar i,
+  body.ui-v2 .perf-skill-bar i,
+  body.ui-v2 .perf-xp-bar i {
+    animation-duration: 180ms !important;
+  }
+
+  .pulse-ring {
+    animation-duration: 1.8s !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto !important;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

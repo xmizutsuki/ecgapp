@@ -43,3 +43,11 @@ guest_patch = Path(__file__).with_name('patch_guest_ai_access.py')
 if not guest_patch.is_file():
     raise SystemExit('Missing patch_guest_ai_access.py')
 exec(compile(guest_patch.read_text(encoding='utf-8'), str(guest_patch), 'exec'))
+
+# Route new account creation through a server-side admin function that marks the
+# email as confirmed immediately. This removes the signup confirmation-link step
+# without exposing an admin/service key in the public web bundle.
+autoconfirm_patch = Path(__file__).with_name('patch_autoconfirm_signup.py')
+if not autoconfirm_patch.is_file():
+    raise SystemExit('Missing patch_autoconfirm_signup.py')
+exec(compile(autoconfirm_patch.read_text(encoding='utf-8'), str(autoconfirm_patch), 'exec'))

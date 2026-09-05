@@ -4,7 +4,10 @@
   const isEn=()=>window.ECG_LANG==='en' || document.documentElement.lang==='en';
 
   /* The generator intentionally draws a little extra signal. Trim the fourth beat
-     from each lead panel so neighboring 12-lead columns never visually overlap. */
+     from each lead panel so neighboring 12-lead columns never visually overlap.
+     The ischemia generator originally used a 1.8 stroke; harmonize it with the
+     standard ECG library (1.4 trace / 1.05 calibration) so mobile rendering has
+     the same visual weight as the other ECGs. */
   function normalizePanelSpacing(uri){
     if(typeof uri!=='string' || !uri.startsWith('data:image/svg+xml'))return uri;
     try{
@@ -12,6 +15,8 @@
       if(comma<0)return uri;
       let svg=decodeURIComponent(uri.slice(comma+1));
       svg=svg.replace(/d="(M 4 70.*?) L 236 70[^"]*"/g,'d="$1"');
+      svg=svg.replace(/stroke-width="1\.8" stroke-linecap/g,'stroke-width="1.4" stroke-linecap');
+      svg=svg.replace('<g transform="translate(30,462)" stroke="#0f172a" stroke-width="1.8" fill="none">','<g transform="translate(30,462)" stroke="#0f172a" stroke-width="1.05" fill="none">');
       return uri.slice(0,comma+1)+encodeURIComponent(svg);
     }catch(_){return uri;}
   }

@@ -1,0 +1,9 @@
+/* ECG Lab — study-case ECG zoom overlay cleanup.
+   Keep gesture-based zoom/pan active while removing UI overlays that cover the tracing. */
+.case-zoom-stage .case-zoom-toolbar,
+.case-zoom-stage .case-zoom-hint{
+  display:none!important;
+  visibility:hidden!important;
+  opacity:0!important;
+  pointer-events:none!important;
+}

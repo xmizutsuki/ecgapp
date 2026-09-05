@@ -43,6 +43,8 @@ for lesson_key, lesson in lessons.items():
         rows.append((lesson_key, lesson.get('title', ''), case))
 
 print(f'AUDIT total_cases={len(rows)} lessons_with_cases={sum(bool(x.get("cases")) for x in lessons.values())}')
+for lesson_key, _, case in rows:
+    print(f'CATALOG|{lesson_key}|{case.get("id","")}|{flat(case.get("title"))}|{flat(case.get("chief_complaint"))}')
 
 # Flag wording that is a template/instruction rather than patient-specific clinical data.
 generic_patterns = [

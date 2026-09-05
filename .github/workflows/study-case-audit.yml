@@ -1,0 +1,51 @@
+name: Audit study case clinical consistency
+
+on:
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate clinical correction scripts
+        run: |
+          node --check study_case_fix_svt_paced.js
+          node --check study_case_fix_ectopy.js
+          node --check study_case_fix_avblock1.js
+          node --check study_case_fix_avblock2.js
+          node --check study_case_fix_ventricular.js
+          node --check study_case_clinical_en_fixes.js
+          node --check scripts/audit_effective_study_cases.js
+
+      - name: Audit effective PT and EN study cases
+        run: node scripts/audit_effective_study_cases.js
+
+      - name: Verify production load order
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          html=Path('index.html').read_text(encoding='utf-8')
+          order=[
+            'study_content.js',
+            'study_case_fix_svt_paced.js',
+            'study_case_fix_ectopy.js',
+            'study_case_fix_avblock1.js',
+            'study_case_fix_avblock2.js',
+            'study_case_fix_ventricular.js',
+            'english_content.js',
+            'english_content_finalize.js',
+            'study_case_clinical_en_fixes.js',
+            'localize_data.js',
+          ]
+          positions=[html.index(x) for x in order]
+          assert positions==sorted(positions), f'Incorrect study data load order: {list(zip(order,positions))}'
+          print('Study case clinical layers load in the required order.')
+          PY

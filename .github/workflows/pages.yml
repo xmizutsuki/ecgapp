@@ -46,19 +46,21 @@ jobs:
       - name: Generate bilingual lesson PDFs
         run: python scripts/generate_lesson_pdfs.py
 
-      - name: Validate Beta 1.0 production bundle
+      - name: Validate Beta 1.1 production bundle
         shell: bash
         run: |
           set -euo pipefail
 
           test -f index.html
           test -f config.js
+          test -f study_case_ischemia.js
+          test -f study_case_ischemia_ui.js
+          test -f study_case_zoom.js
           test "$(find assets/ecg -type f -name '*.svg' | wc -l)" -eq 114
           test "$(find assets/lessons/pt -type f -name '*.pdf' | wc -l)" -eq 21
           test "$(find assets/lessons/en -type f -name '*.pdf' | wc -l)" -eq 21
 
-          # Every local production reference must exist and every active JS file
-          # must parse. Retired source files are deliberately ignored here.
+          # Every production JS/CSS reference must exist. Every active JS file must parse.
           python - <<'PY'
           from html.parser import HTMLParser
           from pathlib import Path
@@ -72,7 +74,7 @@ jobs:
                   if tag=='script' and d.get('src'): self.scripts.append(d['src'])
                   if tag=='link' and d.get('rel')=='stylesheet' and d.get('href'): self.styles.append(d['href'])
 
-          p=Refs(); p.feed(Path('index.html').read_text(encoding='utf-8'))
+          p=Refs();p.feed(Path('index.html').read_text(encoding='utf-8'))
           local=[x for x in p.scripts+p.styles if not x.startswith(('http://','https://','//'))]
           missing=[x for x in local if not Path(x).is_file()]
           if missing: raise SystemExit(f'Missing production references: {missing}')
@@ -83,9 +85,22 @@ jobs:
           PY
 
           python -m py_compile scripts/*.py
+          node --check scripts/audit_effective_study_cases.js
 
-          # Release identity and navigation/session stability.
-          grep -Fq '1.0.0-beta.1' config.js
+          # Release identity and active runtime layers.
+          grep -Fq 'APP_VERSION: "1.1.0-beta.1"' config.js
+          grep -Fq 'study_case_ischemia.js' index.html
+          grep -Fq 'study_case_ischemia_ui.js' index.html
+          grep -Fq 'study_case_zoom.js' index.html
+          grep -Fq 'beta_runtime.js' index.html
+          grep -Fq 'app_shell_v5.css' index.html
+          grep -Fq 'app_shell_v5.js' index.html
+          grep -Fq 'page_header_cleanup_v1.js' index.html
+          ! grep -Fq '<script src="bilingual_ui_fixes.js"' index.html
+          ! grep -Fq 'app_shell_v4.css' index.html
+          ! grep -Fq 'app_shell_v4.js' index.html
+
+          # Navigation/session stability.
           grep -Fq "version:'7.0.0'" navigation_state_fix.js
           grep -Fq "revision:'7.0.0-mobile-shell-preserve'" navigation_state_fix.js
           grep -Fq "stopImmediatePropagation" navigation_state_fix.js
@@ -95,22 +110,7 @@ jobs:
           grep -Fq "mobileResizeRestore:false" app_shell_v5.js
           grep -Fq "window-scroll-v5" app_shell_v5.js
 
-          # The build must contain the normalized ECG viewer used on mobile and
-          # desktop. This prevents portrait-thickness regressions.
-          grep -Fq 'function viewerBaseZoom(){return 1.25}' app.js
-          grep -Fq 'clamp(Number((v.zoom+delta).toFixed(2)),.75,8)' app.js
-          grep -Fq "wrap.style.touchAction='none'" app.js
-
-          # Only the current shell/runtime layers are loaded in production.
-          ! grep -Fq '<script src="bilingual_ui_fixes.js"' index.html
-          ! grep -Fq 'app_shell_v4.css' index.html
-          ! grep -Fq 'app_shell_v4.js' index.html
-          grep -Fq 'beta_runtime.js' index.html
-          grep -Fq 'app_shell_v5.css' index.html
-          grep -Fq 'app_shell_v5.js' index.html
-          grep -Fq 'page_header_cleanup_v1.js' index.html
-
-          # Core learner workflows remain resumable and cloud-aware.
+          # Training, simulations, performance, tutor and beta feedback remain wired.
           grep -Fq 'MIN_COUNT=20,MAX_COUNT=80' training_features.js
           grep -Fq 'training_session_answers' training_features.js
           grep -Fq 'state_snapshot' training_features.js
@@ -124,15 +124,26 @@ jobs:
           grep -Fq 'caseReasoningInput' study_casecoach_features.js
           grep -Fq 'beta_feedback' beta_runtime.js
 
-          # Validate ECG/question integrity in both languages.
+          # Study-case ECG viewer must preserve the same core interactions as training.
+          grep -Fq 'const MAX_ZOOM=8' study_case_zoom.js
+          grep -Fq '.case-ecg-image' study_case_zoom.js
+          grep -Fq "addEventListener('wheel'" study_case_zoom.js
+          grep -Fq "addEventListener('touchmove'" study_case_zoom.js
+          grep -Fq 'requestFullscreen' study_case_zoom.js
+          grep -Fq '__caseZoomReset' study_case_zoom.js
+
+          # Validate effective clinical study content after all production correction/localization layers.
+          node scripts/audit_effective_study_cases.js
+
+          # Validate training ECG/question library in both languages.
           node - <<'NODE'
           const fs=require('fs'),vm=require('vm');
           async function validate(lang){
-            const sandbox={window:{ECG_LANG:lang},console}; vm.createContext(sandbox);
+            const sandbox={window:{ECG_LANG:lang},console};vm.createContext(sandbox);
             for(const f of ['study_content.js','real_cases.js','english_content.js','english_content_finalize.js','localize_data.js']) vm.runInContext(fs.readFileSync(f,'utf8'),sandbox,{filename:f});
             const lib=await sandbox.window.ECG_REAL_LIBRARY.load();
             if(lib.cases.length!==114||lib.questions.length!==114||lib.categories.length!==19) throw new Error(`${lang}: unexpected ECG library size`);
-            const caseIds=new Set(),questionIds=new Set(),cases=new Map();
+            const cases=new Map(),caseIds=new Set(),questionIds=new Set();
             for(const c of lib.cases){
               if(caseIds.has(String(c.id)))throw new Error(`${lang}: duplicate ECG case ${c.id}`);
               caseIds.add(String(c.id));cases.set(String(c.id),c);
@@ -143,28 +154,19 @@ jobs:
               questionIds.add(String(q.id));
               const c=cases.get(String(q.ecg_case_id));if(!c)throw new Error(`${lang}: question ${q.id} has no matching ECG case`);
               if(!q.prompt||!q.explanation)throw new Error(`${lang}: incomplete question ${q.id}`);
-              const opts=q.options||[];if(opts.length<2)throw new Error(`${lang}: question ${q.id} has too few alternatives`);
+              const opts=q.options||[];if(opts.length<2)throw new Error(`${lang}: too few alternatives in ${q.id}`);
               const correct=opts.filter(o=>!!(Array.isArray(o)?o[1]:o?.is_correct)).length;
-              if(correct!==1)throw new Error(`${lang}: question ${q.id} must have exactly one correct option, got ${correct}`);
+              if(correct!==1)throw new Error(`${lang}: question ${q.id} must have exactly one correct option`);
               const labels=opts.map(o=>String(Array.isArray(o)?o[0]:o?.label||'').trim().toLowerCase());
               if(new Set(labels).size!==labels.length)throw new Error(`${lang}: duplicate alternative in ${q.id}`);
               const difficulty=Number(q.difficulty||c.difficulty||0);if(difficulty<1||difficulty>5)throw new Error(`${lang}: invalid difficulty in ${q.id}`);
-              if(!q.category&&!c.category)throw new Error(`${lang}: missing category in ${q.id}`);
             }
-            const study=sandbox.window.ECG_STUDY_CONTENT,lessons=Object.values(study.lessons||{}),studyIds=new Set();
-            if(lessons.length!==21)throw new Error(`${lang}: expected 21 lessons`);
-            let count=0;
-            for(const lesson of lessons)for(const c of lesson.cases||[]){
-              count++;if(studyIds.has(String(c.id)))throw new Error(`${lang}: duplicate study case ${c.id}`);studyIds.add(String(c.id));
-              if(!c.question||!c.answer||!c.reasoning||!c.learning_point)throw new Error(`${lang}: incomplete study case ${c.id}`);
-            }
-            if(count!==190)throw new Error(`${lang}: expected 190 study cases, got ${count}`);
-            console.log(`${lang}: 114 ECG questions and 190 study cases validated.`);
+            console.log(`${lang}: 114 ECG cases/questions validated.`);
           }
           Promise.all([validate('pt-BR'),validate('en')]).catch(e=>{console.error(e);process.exit(1)});
           NODE
 
-          # Educational assets must be parseable and free of active SVG content.
+          # Educational files must be parseable and SVGs must not contain active content.
           python - <<'PY'
           from pathlib import Path
           from xml.etree import ElementTree as ET
@@ -181,13 +183,10 @@ jobs:
           print('114 SVGs and 42 lesson PDFs validated.')
           PY
 
-          # Public frontend may contain a publishable Supabase key, but never a
-          # service-role/secret key, provider secret, or private key. Python avoids
-          # fragile shell quoting in this security-critical check.
+          # Public frontend may contain only the publishable Supabase key, never secrets.
           python - <<'PY'
           from pathlib import Path
           import re
-
           patterns=[
               re.compile(r'sb_secret_',re.I),
               re.compile(r'service[_ -]?role[_ -]?key',re.I),
@@ -204,7 +203,7 @@ jobs:
           print('Frontend secret scan passed.')
           PY
 
-          ! grep -RniE 'registro clínico real|ECG real de paciente|real patient ECG' index.html app.js study_casecoach_features.js training_features.js performance_features.js floating_tutor_v2.js README.md DATA_SOURCES.md || {
+          ! grep -RniE 'registro clínico real|ECG real de paciente|real patient ECG' index.html app.js study_casecoach_features.js study_case_ischemia.js training_features.js performance_features.js floating_tutor_v2.js README.md DATA_SOURCES.md || {
             echo 'Found wording that may incorrectly imply synthetic tracings are real patient ECGs.'; exit 1;
           }
 

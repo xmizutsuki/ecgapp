@@ -11,6 +11,7 @@
   <!-- Warm up the only external runtime origins used by the application. -->
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
   <link rel="preconnect" href="https://jkvalsckcqzwnbginmow.supabase.co" crossorigin />
+  <link rel="preload" as="script" href="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" />
 
   <!-- All production styles are discovered immediately. Cascade order is preserved. -->
   <link rel="stylesheet" href="styles.css" />
@@ -33,7 +34,7 @@
   <link rel="stylesheet" href="performance_beta11_v2.css" />
   <!-- Legacy/retired UI assets intentionally NOT loaded: floating_tutor.css premium_motion.css premium_motion_overrides.css -->
 
-  <!-- Deferred scripts download in parallel and execute in the original dependency order after HTML parsing. -->
+  <!-- Deferred scripts download in parallel and execute in dependency order after HTML parsing. -->
   <script defer src="config.js"></script>
   <script defer src="i18n.js"></script>
   <script defer src="real_cases.js"></script>
@@ -50,6 +51,7 @@
   <script defer src="study_case_ischemia.js"></script>
 
   <script defer src="app.js"></script>
+  <script defer src="lazy_page_render_v1.js"></script>
   <script defer src="study_casecoach_features.js"></script>
   <script defer src="training_features.js"></script>
   <script defer src="simulation_features.js"></script>

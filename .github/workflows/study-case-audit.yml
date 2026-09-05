@@ -1,6 +1,8 @@
 name: Audit study case clinical consistency
 
 on:
+  push:
+    branches: ["main"]
   pull_request:
     branches: ["main"]
   workflow_dispatch:
@@ -15,7 +17,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Validate clinical correction scripts
+      - name: Validate study case scripts
         run: |
           node --check study_case_fix_svt_paced.js
           node --check study_case_fix_ectopy.js
@@ -23,6 +25,9 @@ jobs:
           node --check study_case_fix_avblock2.js
           node --check study_case_fix_ventricular.js
           node --check study_case_clinical_en_fixes.js
+          node --check study_case_ischemia.js
+          node --check study_case_ischemia_ui.js
+          node --check study_case_zoom.js
           node --check scripts/audit_effective_study_cases.js
 
       - name: Audit effective PT and EN study cases
@@ -33,7 +38,7 @@ jobs:
           python - <<'PY'
           from pathlib import Path
           html=Path('index.html').read_text(encoding='utf-8')
-          order=[
+          data_order=[
             'study_content.js',
             'study_case_fix_svt_paced.js',
             'study_case_fix_ectopy.js',
@@ -44,8 +49,14 @@ jobs:
             'english_content_finalize.js',
             'study_case_clinical_en_fixes.js',
             'localize_data.js',
+            'study_case_ischemia.js',
           ]
-          positions=[html.index(x) for x in order]
-          assert positions==sorted(positions), f'Incorrect study data load order: {list(zip(order,positions))}'
-          print('Study case clinical layers load in the required order.')
+          pos=[html.index(x) for x in data_order]
+          assert min(pos) >= 0 and pos==sorted(pos), f'Incorrect study data load order: {list(zip(data_order,pos))}'
+
+          ui_order=['study_casecoach_features.js','study_case_ischemia_ui.js','study_case_zoom.js']
+          ui_pos=[html.index(x) for x in ui_order]
+          assert min(ui_pos) >= 0 and ui_pos==sorted(ui_pos), f'Incorrect study UI load order: {list(zip(ui_order,ui_pos))}'
+          assert html.rstrip().endswith('</html>')
+          print('Study data, ischemia cases and zoom load in the required order.')
           PY

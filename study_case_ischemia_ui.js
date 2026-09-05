@@ -1,7 +1,24 @@
-/* ECG Lab — UI corrections specific to Ischemia/ST-T study cases. */
+/* ECG Lab — final UI corrections specific to Ischemia/ST-T study cases. */
 (function(){
   'use strict';
   const isEn=()=>window.ECG_LANG==='en' || document.documentElement.lang==='en';
+
+  /* The generator intentionally draws a little extra signal. Trim the fourth beat
+     from each lead panel so neighboring 12-lead columns never visually overlap. */
+  function normalizePanelSpacing(uri){
+    if(typeof uri!=='string' || !uri.startsWith('data:image/svg+xml'))return uri;
+    try{
+      const comma=uri.indexOf(',');
+      if(comma<0)return uri;
+      let svg=decodeURIComponent(uri.slice(comma+1));
+      svg=svg.replace(/d="(M 4 70.*?) L 236 70[^"]*"/g,'d="$1"');
+      return uri.slice(0,comma+1)+encodeURIComponent(svg);
+    }catch(_){return uri;}
+  }
+  const ischemiaLesson=window.ECG_STUDY_CONTENT?.lessons?.ischemia;
+  if(ischemiaLesson?.cases?.length){
+    ischemiaLesson.cases.forEach(c=>{c.ecg_image=normalizePanelSpacing(c.ecg_image)});
+  }
 
   const originalLesson=window.renderStudyLesson;
   if(typeof originalLesson==='function'){

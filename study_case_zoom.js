@@ -90,6 +90,7 @@
     };
     const reset=()=>{state.zoom=baseZoom();state.offsetX=0;state.offsetY=0;apply()};
     const zoomBy=delta=>{state.zoom=clamp(Number((state.zoom+delta).toFixed(2)),MIN_ZOOM,MAX_ZOOM);apply()};
+    stage.__caseZoomReset=reset;
 
     makeToolbar(stage,state,apply,reset);
     apply();
@@ -145,12 +146,6 @@
     });
     stage.addEventListener('touchcancel',()=>{pinch=null;stage.classList.remove('pinching');end()});
     stage.addEventListener('contextmenu',e=>{if(state.zoom>baseZoom())e.preventDefault()});
-
-    const onFullscreen=()=>{if(!document.fullscreenElement&&document.body.contains(stage))reset()};
-    document.addEventListener('fullscreenchange',onFullscreen);
-
-    const onResize=()=>{if(document.body.contains(stage))reset();else window.removeEventListener('resize',onResize)};
-    window.addEventListener('resize',onResize);
   }
 
   function bindAll(){
@@ -174,7 +169,16 @@
     }
   });
 
-  const start=()=>{bindAll();observer.observe(document.body,{childList:true,subtree:true})};
+  function resetVisible(){
+    document.querySelectorAll('.case-zoom-stage').forEach(stage=>stage.__caseZoomReset?.());
+  }
+
+  const start=()=>{
+    bindAll();
+    observer.observe(document.body,{childList:true,subtree:true});
+    window.addEventListener('resize',resetVisible);
+    document.addEventListener('fullscreenchange',()=>{if(!document.fullscreenElement)resetVisible()});
+  };
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
   window.addEventListener('ecg:pagechange',e=>{if(e.detail?.to==='trilha')scheduleBind()});
   window.ECG_STUDY_CASE_ZOOM={bindAll,scheduleBind};

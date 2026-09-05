@@ -8,12 +8,65 @@
   <title>ECG Lab</title>
   <script>try{if(localStorage.getItem('ecgLabLanguage'))document.documentElement.classList.add('language-selected')}catch(e){}</script>
 
-  <!-- Base styles. Typography uses the native system stack; no external font download is required. -->
+  <!-- Warm up the only external runtime origins used by the application. -->
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+  <link rel="preconnect" href="https://jkvalsckcqzwnbginmow.supabase.co" crossorigin />
+
+  <!-- All production styles are discovered immediately. Cascade order is preserved. -->
   <link rel="stylesheet" href="styles.css" />
   <link rel="stylesheet" href="release_features.css" />
   <link rel="stylesheet" href="performance_features.css" />
   <link rel="stylesheet" href="floating_tutor_v2.css" />
+  <link rel="stylesheet" href="premium_ui_v2.css" />
+  <link rel="stylesheet" href="premium_typography.css" />
+  <link rel="stylesheet" href="ui_component_fixes_v2.css" />
+  <link rel="stylesheet" href="performance_hotfix.css" />
+  <link rel="stylesheet" href="auth_spacing_hotfix_v1.css" />
+  <link rel="stylesheet" href="ui_foundation_v3.css" />
+  <link rel="stylesheet" href="beta_runtime.css" />
+  <link rel="stylesheet" href="dashboard_viewport_fit.css" />
+  <link rel="stylesheet" href="ai_typography.css" />
+  <link rel="stylesheet" href="app_shell_v5.css" />
+  <link rel="stylesheet" href="page_header_cleanup_v1.css" />
+  <link rel="stylesheet" href="page_content_harmony_v1.css" />
+  <link rel="stylesheet" href="page_content_harmony_v2.css" />
+  <link rel="stylesheet" href="performance_beta11_v2.css" />
   <!-- Legacy/retired UI assets intentionally NOT loaded: floating_tutor.css premium_motion.css premium_motion_overrides.css -->
+
+  <!-- Deferred scripts download in parallel and execute in the original dependency order after HTML parsing. -->
+  <script defer src="config.js"></script>
+  <script defer src="i18n.js"></script>
+  <script defer src="real_cases.js"></script>
+  <script defer src="study_content.js"></script>
+  <script defer src="study_case_fix_svt_paced.js"></script>
+  <script defer src="study_case_fix_ectopy.js"></script>
+  <script defer src="study_case_fix_avblock1.js"></script>
+  <script defer src="study_case_fix_avblock2.js"></script>
+  <script defer src="study_case_fix_ventricular.js"></script>
+  <script defer src="english_content.js"></script>
+  <script defer src="english_content_finalize.js"></script>
+  <script defer src="study_case_clinical_en_fixes.js"></script>
+  <script defer src="localize_data.js"></script>
+  <script defer src="study_case_ischemia.js"></script>
+
+  <script defer src="app.js"></script>
+  <script defer src="study_casecoach_features.js"></script>
+  <script defer src="training_features.js"></script>
+  <script defer src="simulation_features.js"></script>
+  <script defer src="simulation_zoom.js"></script>
+  <script defer src="performance_features.js"></script>
+  <script defer src="metrics_consistency.js"></script>
+  <!-- Legacy Tutor assets intentionally NOT loaded: tutor_bilingual_fix.js floating_tutor.js -->
+  <script defer src="floating_tutor_v2.js"></script>
+
+  <script defer src="premium_ui_v2.js"></script>
+  <script defer src="navigation_state_fix.js"></script>
+  <script defer src="ui_foundation_v3.js"></script>
+  <script defer src="beta_runtime.js"></script>
+  <script defer src="app_shell_v5.js"></script>
+  <script defer src="page_header_cleanup_v1.js"></script>
+  <script defer src="study_case_ischemia_ui.js"></script>
+  <script defer src="study_case_zoom.js"></script>
 </head>
 <body>
   <div id="languageGate" class="language-gate" aria-label="Language selection">
@@ -48,55 +101,5 @@
   </div>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-
-  <!-- Base data, case-specific clinical corrections, curated English data, then UI localization. -->
-  <script src="config.js"></script>
-  <script src="i18n.js"></script>
-  <script src="real_cases.js"></script>
-  <script src="study_content.js"></script>
-  <script src="study_case_fix_svt_paced.js"></script>
-  <script src="study_case_fix_ectopy.js"></script>
-  <script src="study_case_fix_avblock1.js"></script>
-  <script src="study_case_fix_avblock2.js"></script>
-  <script src="study_case_fix_ventricular.js"></script>
-  <script src="english_content.js"></script>
-  <script src="english_content_finalize.js"></script>
-  <script src="study_case_clinical_en_fixes.js"></script>
-  <script src="localize_data.js"></script>
-  <script src="study_case_ischemia.js"></script>
-
-  <!-- Core app and feature layers. -->
-  <script src="app.js"></script>
-  <script src="study_casecoach_features.js"></script>
-  <script src="training_features.js"></script>
-  <script src="simulation_features.js"></script>
-  <script src="simulation_zoom.js"></script>
-  <script src="performance_features.js"></script>
-  <script src="metrics_consistency.js"></script>
-  <!-- Legacy Tutor assets intentionally NOT loaded: tutor_bilingual_fix.js floating_tutor.js -->
-  <script src="floating_tutor_v2.js"></script>
-
-  <!-- Premium UI layers are loaded LAST, then Foundation v3 normalizes typography/responsiveness. -->
-  <link rel="stylesheet" href="premium_ui_v2.css" />
-  <link rel="stylesheet" href="premium_typography.css" />
-  <link rel="stylesheet" href="ui_component_fixes_v2.css" />
-  <link rel="stylesheet" href="performance_hotfix.css" />
-  <link rel="stylesheet" href="auth_spacing_hotfix_v1.css" />
-  <link rel="stylesheet" href="ui_foundation_v3.css" />
-  <link rel="stylesheet" href="beta_runtime.css" />
-  <link rel="stylesheet" href="dashboard_viewport_fit.css" />
-  <link rel="stylesheet" href="ai_typography.css" />
-  <link rel="stylesheet" href="app_shell_v5.css" />
-  <link rel="stylesheet" href="page_header_cleanup_v1.css" />
-  <link rel="stylesheet" href="page_content_harmony_v1.css" />
-  <link rel="stylesheet" href="page_content_harmony_v2.css" />
-  <script src="premium_ui_v2.js"></script>
-  <script src="navigation_state_fix.js"></script>
-  <script src="ui_foundation_v3.js"></script>
-  <script src="beta_runtime.js"></script>
-  <script src="app_shell_v5.js"></script>
-  <script src="page_header_cleanup_v1.js"></script>
-  <script src="study_case_ischemia_ui.js"></script>
-  <script src="study_case_zoom.js"></script>
 </body>
 </html>

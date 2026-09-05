@@ -14,17 +14,38 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - name: Audit all 190 study cases
-        run: python scripts/audit_study_cases.py
-      - name: Export bilingual case data
-        run: node scripts/export_study_cases_audit.js
-      - name: Upload audit report
-        uses: actions/upload-artifact@v4
-        with:
-          name: study-case-audit-report
-          path: study-case-audit-report.json
-          if-no-files-found: error
+
+      - name: Validate clinical correction scripts
+        run: |
+          node --check study_case_fix_svt_paced.js
+          node --check study_case_fix_ectopy.js
+          node --check study_case_fix_avblock1.js
+          node --check study_case_fix_avblock2.js
+          node --check study_case_fix_ventricular.js
+          node --check study_case_clinical_en_fixes.js
+          node --check scripts/audit_effective_study_cases.js
+
+      - name: Audit effective PT and EN study cases
+        run: node scripts/audit_effective_study_cases.js
+
+      - name: Verify production load order
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          html=Path('index.html').read_text(encoding='utf-8')
+          order=[
+            'study_content.js',
+            'study_case_fix_svt_paced.js',
+            'study_case_fix_ectopy.js',
+            'study_case_fix_avblock1.js',
+            'study_case_fix_avblock2.js',
+            'study_case_fix_ventricular.js',
+            'english_content.js',
+            'english_content_finalize.js',
+            'study_case_clinical_en_fixes.js',
+            'localize_data.js',
+          ]
+          positions=[html.index(x) for x in order]
+          assert positions==sorted(positions), f'Incorrect study data load order: {list(zip(order,positions))}'
+          print('Study case clinical layers load in the required order.')
+          PY
